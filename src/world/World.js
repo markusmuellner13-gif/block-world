@@ -5,11 +5,11 @@ import { BLOCKS, BLOCK_IS_TRANSPARENT } from './BlockRegistry.js';
 import { CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, SEA_LEVEL } from '../Constants.js';
 
 export class World {
-  constructor(scene, textureManager) {
+  constructor(scene, textureManager, seed) {
     this.scene = scene;
     this.textures = textureManager;
     this.chunks = new Map();
-    this.generator = new WorldGenerator(Math.floor(Math.random() * 99999));
+    this.generator = new WorldGenerator(seed ?? Math.floor(Math.random() * 99999));
     this._buildQueue = [];
     this._meshQueue = [];
     this._villageQueue = [];
@@ -147,5 +147,25 @@ export class World {
       }
     }
     return SEA_LEVEL;
+  }
+
+  // Synchronously generate the 3×3 chunks around spawn so the player
+  // always lands on a solid block and never falls through un-loaded terrain.
+  generateSpawnArea() {
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dz = -1; dz <= 1; dz++) {
+        const key = this._key(dx, dz);
+        if (!this.chunks.has(key)) {
+          const chunk = new Chunk(dx, dz);
+          chunk.data = this.generator.generateChunk(dx, dz);
+          chunk.generated = true;
+          this.chunks.set(key, chunk);
+          // Queue mesh build for these chunks
+          this._meshQueue.push(chunk);
+        }
+      }
+    }
+    // Return the surface Y at the exact spawn column (0, 0)
+    return this.getSurfaceHeight(0, 0);
   }
 }

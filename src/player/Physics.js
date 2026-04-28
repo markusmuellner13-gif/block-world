@@ -10,8 +10,9 @@ export class Physics {
     this.world = world;
     this.velocity = new THREE.Vector3();
     this.onGround = false;
-    this.inWater = false;
-    this.flying = false;
+    this.inWater  = false;
+    this.flying   = false;
+    this._fallSpeed = 0; // tracks downward speed for fall-damage calc
   }
 
   // Axis-Aligned Bounding Box check
@@ -100,15 +101,17 @@ export class Physics {
       // Y
       if (this._collides(nx, ny, nz)) {
         if (this.velocity.y < 0) {
-          // Snap to floor
+          this._fallSpeed = -this.velocity.y; // record speed at impact
           ny = Math.floor(ny) + 1 - 0.001;
           this.onGround = true;
         } else {
           ny = position.y;
+          this._fallSpeed = 0;
         }
         this.velocity.y = 0;
       } else {
         this.onGround = false;
+        if (this.velocity.y < 0) this._fallSpeed = -this.velocity.y;
       }
 
       position.x = nx;

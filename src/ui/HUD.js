@@ -31,11 +31,14 @@ function blockColor(id) {
 }
 
 export class HUD {
-  constructor(root, player) {
+  constructor(root, player, game) {
     this.root   = root;
     this.player = player;
+    this.game   = game;
     this._inventoryOpen = false;
     this._npcDialog = null;
+    this._notifications = [];
+    this._chatMessages  = [];
 
     this._build();
   }
@@ -119,11 +122,79 @@ export class HUD {
       LMB: Break &nbsp; RMB: Place &nbsp; 1-9: Hotbar`;
     this.root.appendChild(hint);
 
+    // Creative mode badge
+    const creativeBadge = document.createElement('div');
+    creativeBadge.style.cssText = `
+      position:absolute; top:12px; left:50%; transform:translateX(-50%);
+      background:rgba(80,40,160,0.85); color:#d0b0ff; font-size:12px;
+      padding:4px 14px; border-radius:12px; pointer-events:none;
+      display:none; letter-spacing:2px; border:1px solid #9a7aff;
+    `;
+    creativeBadge.textContent = 'CREATIVE';
+    this._creativeBadge = creativeBadge;
+    this.root.appendChild(creativeBadge);
+
+    // Notification area
+    const notifArea = document.createElement('div');
+    notifArea.style.cssText = `
+      position:absolute; top:60px; left:50%; transform:translateX(-50%);
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      pointer-events:none; z-index:25;
+    `;
+    this._notifArea = notifArea;
+    this.root.appendChild(notifArea);
+
+    // Chat log
+    const chatLog = document.createElement('div');
+    chatLog.style.cssText = `
+      position:absolute; bottom:120px; left:12px;
+      display:flex; flex-direction:column; gap:2px;
+      pointer-events:none; z-index:25; max-width:320px;
+    `;
+    this._chatLog = chatLog;
+    this.root.appendChild(chatLog);
+
     // Inventory overlay
     this._buildInventoryUI();
 
     // NPC dialog
     this._buildNPCDialog();
+  }
+
+  showNotification(msg) {
+    const el = document.createElement('div');
+    el.style.cssText = `
+      background:rgba(0,0,0,0.6); color:#fff; font-size:12px;
+      padding:4px 14px; border-radius:10px; opacity:1;
+      transition:opacity 1s; white-space:nowrap;
+    `;
+    el.textContent = msg;
+    this._notifArea.appendChild(el);
+    this._notifications.push(el);
+    setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(() => { el.remove(); this._notifications = this._notifications.filter(n => n !== el); }, 1000);
+    }, 3000);
+  }
+
+  showChat(name, msg) {
+    const el = document.createElement('div');
+    el.style.cssText = `
+      background:rgba(0,0,0,0.5); color:#fff; font-size:12px;
+      padding:3px 10px; border-radius:4px; opacity:1;
+      transition:opacity 1.5s; white-space:pre-wrap; max-width:320px; word-break:break-word;
+    `;
+    el.innerHTML = `<span style="color:#7bcfff;font-weight:bold;">${name.replace(/</g,'&lt;')}</span>: ${msg.replace(/</g,'&lt;')}`;
+    this._chatLog.appendChild(el);
+    this._chatMessages.push(el);
+    if (this._chatMessages.length > 8) {
+      const old = this._chatMessages.shift();
+      old.remove();
+    }
+    setTimeout(() => {
+      el.style.opacity = '0';
+      setTimeout(() => { el.remove(); this._chatMessages = this._chatMessages.filter(m => m !== el); }, 1500);
+    }, 6000);
   }
 
   _buildInventoryUI() {
@@ -214,6 +285,7 @@ export class HUD {
     this._updateHotbar();
     this._updateHealth();
     this._updateCamera();
+    this._creativeBadge.style.display = this.game?.mode === 'creative' ? 'block' : 'none';
   }
 
   _updateHotbar() {
