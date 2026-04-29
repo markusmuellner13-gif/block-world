@@ -56,7 +56,7 @@ export class Player {
     if (mode === 'creative') {
       this.health = this.maxHealth;
       this.food   = this.maxFood;
-      this.physics.flying = true;
+      // Flying is opt-in in creative; press V or double-tap Space to enable
     } else {
       this.physics.flying = false;
     }
@@ -144,15 +144,19 @@ export class Player {
       this.inventory.selectSlot((this.inventory.selectedSlot + dir + 9) % 9);
     }
 
-    // Double-tap Space → toggle fly in creative
-    if (this.mode === 'creative' && controls.isDown('Space')) {
-      const now = performance.now();
-      if (now - this._lastSpaceTime < 250) {
-        this.physics.flying = !this.physics.flying;
-        this._lastSpaceTime = 0;
-      } else {
-        this._lastSpaceTime = now;
+    // Double-tap Space → toggle fly in creative (only fires on key-down edge)
+    if (this.mode === 'creative') {
+      const spaceDown = controls.isDown('Space');
+      if (spaceDown && !this._prevSpaceDown) {
+        const now = performance.now();
+        if (now - this._lastSpaceTime < 250) {
+          this.physics.flying = !this.physics.flying;
+          this._lastSpaceTime = 0;
+        } else {
+          this._lastSpaceTime = now;
+        }
       }
+      this._prevSpaceDown = spaceDown;
     }
 
     // Survival damage (fall damage handled in Physics)
@@ -237,32 +241,35 @@ export class Player {
       const key      = `${hit.position.x},${hit.position.y},${hit.position.z}`;
       const blockId  = hit.block;
       const hardness = BLOCK_HARDNESS[blockId];
-      if (hardness === -1) { this.breakingBlock = null; return; }
 
-      if (this.breakingBlock !== key) { this.breakingBlock = key; this.breakProgress = 0; }
-
-      const item     = this.inventory.getSelected();
-      const toolMult = item?.miningSpeed || 1;
-      // Creative: instant break regardless of tool
-      const speed    = this.mode === 'creative' ? 999 : toolMult;
-      this.breakProgress += dt * speed / Math.max(0.05, hardness);
-
-      this._breakOverlay.position.set(hit.position.x + 0.5, hit.position.y + 0.5, hit.position.z + 0.5);
-      this._breakOverlay.visible         = true;
-      this._breakOverlay.material.opacity = Math.min(0.6, this.breakProgress * 0.6);
-
-      if (this.breakProgress >= 1) {
-        const { x, y, z } = hit.position;
-        this.world.setBlockWorld(x, y, z, BLOCKS.AIR);
-        // Notify multiplayer
-        this.game?.multiplayer?.sendBlockChange(x, y, z, BLOCKS.AIR);
-        // In survival add to inventory; in creative don't (unlimited)
-        if (this.mode === 'survival') {
-          this.inventory.addItem({ id: blockId, name: this._blockName(blockId), count: 1 });
-        }
+      if (hardness === -1) {
+        // Indestructible block — reset progress but don't skip place-block code
         this.breakingBlock = null;
         this.breakProgress = 0;
         this._breakOverlay.visible = false;
+      } else {
+        if (this.breakingBlock !== key) { this.breakingBlock = key; this.breakProgress = 0; }
+
+        const item     = this.inventory.getSelected();
+        const toolMult = item?.miningSpeed || 1;
+        const speed    = this.mode === 'creative' ? 999 : toolMult;
+        this.breakProgress += dt * speed / Math.max(0.05, hardness);
+
+        this._breakOverlay.position.set(hit.position.x + 0.5, hit.position.y + 0.5, hit.position.z + 0.5);
+        this._breakOverlay.visible          = true;
+        this._breakOverlay.material.opacity = Math.min(0.6, this.breakProgress * 0.6);
+
+        if (this.breakProgress >= 1) {
+          const { x, y, z } = hit.position;
+          this.world.setBlockWorld(x, y, z, BLOCKS.AIR);
+          this.game?.multiplayer?.sendBlockChange(x, y, z, BLOCKS.AIR);
+          if (this.mode === 'survival') {
+            this.inventory.addItem({ id: blockId, name: this._blockName(blockId), count: 1 });
+          }
+          this.breakingBlock = null;
+          this.breakProgress = 0;
+          this._breakOverlay.visible = false;
+        }
       }
     } else {
       this.breakingBlock = null;

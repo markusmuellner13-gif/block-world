@@ -42,34 +42,35 @@ function addCracks(ctx, density = 0.04) {
 
 const BLOCK_TEXTURES = {
   grass_top:    (ctx) => {
-    drawNoisy(ctx, '#5a9e3c', '#4a8a2c', '#6aae4c');
-    // blades
+    drawNoisy(ctx, '#5da62c', '#4a9020', '#6dbb38');
+    // dark grass blades for detail
     for (let i = 0; i < 8; i++) {
       const bx = Math.floor(noise2(i, 1) * TEX);
-      ctx.fillStyle = '#3d7a20';
+      ctx.fillStyle = '#3d8a18';
       ctx.fillRect(bx, 0, 1, 2);
     }
   },
   grass_side:   (ctx) => {
-    ctx.fillStyle = '#8b6340';
-    ctx.fillRect(0, 4, TEX, TEX);
-    drawNoisy(ctx, '#5a9e3c', '#4a8a2c', '#6aae4c');
-    ctx.clearRect(0, 4, TEX, TEX - 4);
-    ctx.fillStyle = '#8b6340';
-    ctx.fillRect(0, 4, TEX, TEX - 4);
+    // dirt base
+    ctx.fillStyle = '#866043';
+    ctx.fillRect(0, 0, TEX, TEX);
+    drawNoisy(ctx, '#866043', '#7a5535', '#9a7050');
+    addCracks(ctx, 0.02);
+    // grass strip at top
     for (let x = 0; x < TEX; x++) {
-      const dn = Math.floor(noise2(x * 2, 0) * 3);
-      ctx.fillStyle = '#5a9e3c';
-      ctx.fillRect(x, dn, 1, 4);
+      const dn = Math.floor(noise2(x * 2, 0) * 3) + 1;
+      ctx.fillStyle = '#5da62c';
+      ctx.fillRect(x, 0, 1, dn + 2);
+      ctx.fillStyle = '#4a9020';
+      ctx.fillRect(x, dn + 2, 1, 1);
     }
-    addCracks(ctx, 0.03);
   },
   dirt:         (ctx) => {
-    drawNoisy(ctx, '#8b6340', '#7a5530', '#9b7350');
+    drawNoisy(ctx, '#866043', '#7a5535', '#9a7050');
     addCracks(ctx, 0.02);
   },
   stone:        (ctx) => {
-    drawNoisy(ctx, '#888', '#777', '#999');
+    drawNoisy(ctx, '#808080', '#707070', '#909090');
     addCracks(ctx, 0.05);
   },
   cobblestone:  (ctx) => {
@@ -97,12 +98,16 @@ const BLOCK_TEXTURES = {
     }
   },
   water:        (ctx) => {
-    ctx.fillStyle = '#1a6ea0';
+    ctx.fillStyle = '#3f76e4';
     ctx.fillRect(0, 0, TEX, TEX);
     for (let y = 0; y < TEX; y++) {
       for (let x = 0; x < TEX; x++) {
-        if (noise2(x * 0.7, y * 0.7) > 0.75) {
-          ctx.fillStyle = 'rgba(100,200,255,0.4)';
+        const n = noise2(x * 0.7, y * 0.7);
+        if (n > 0.75) {
+          ctx.fillStyle = 'rgba(160,210,255,0.45)';
+          ctx.fillRect(x, y, 1, 1);
+        } else if (n < 0.2) {
+          ctx.fillStyle = 'rgba(20,60,180,0.3)';
           ctx.fillRect(x, y, 1, 1);
         }
       }
@@ -124,15 +129,20 @@ const BLOCK_TEXTURES = {
     addCracks(ctx, 0.08);
   },
   wood_log_side: (ctx) => {
-    ctx.fillStyle = '#8B6914';
+    ctx.fillStyle = '#9b7826';
     ctx.fillRect(0, 0, TEX, TEX);
     for (let y = 0; y < TEX; y++) {
-      const n = noise2(y * 0.5, 1) * 20 - 10;
-      ctx.fillStyle = y % 2 === 0 ? '#7a5a0f' : '#9b7920';
+      ctx.fillStyle = y % 2 === 0 ? '#8a6818' : '#ac8830';
       ctx.fillRect(0, y, TEX, 1);
     }
-    // bark edges
-    ctx.fillStyle = '#5a3a05';
+    // bark stripe details
+    for (let y = 0; y < TEX; y++) {
+      if (noise2(y * 0.8, 3) > 0.72) {
+        ctx.fillStyle = 'rgba(60,30,0,0.4)';
+        ctx.fillRect(0, y, TEX, 1);
+      }
+    }
+    ctx.fillStyle = '#5a3a08';
     ctx.fillRect(0, 0, 1, TEX);
     ctx.fillRect(TEX - 1, 0, 1, TEX);
   },
@@ -152,21 +162,20 @@ const BLOCK_TEXTURES = {
     ctx.fillRect(7, 7, 2, 2);
   },
   leaves:       (ctx) => {
-    drawNoisy(ctx, '#2d8b1e', '#1d7b0e', '#3d9b2e');
+    drawNoisy(ctx, '#4a9e20', '#3a8a14', '#5ab02e');
     for (let y = 0; y < TEX; y++) {
       for (let x = 0; x < TEX; x++) {
-        if (noise2(x * 2.1, y * 2.1, 11) > 0.85) {
-          ctx.fillStyle = 'rgba(0,0,0,0)';
+        if (noise2(x * 2.1, y * 2.1, 11) > 0.86) {
           ctx.clearRect(x, y, 1, 1);
         }
       }
     }
   },
   leaves_birch: (ctx) => {
-    drawNoisy(ctx, '#4aab2e', '#3a9b1e', '#5abb3e');
+    drawNoisy(ctx, '#5db030', '#4a9e22', '#6ec040');
   },
   leaves_pine:  (ctx) => {
-    drawNoisy(ctx, '#1d6614', '#0d5604', '#2d7624');
+    drawNoisy(ctx, '#1e6a14', '#0e5a08', '#2e7a20');
   },
   birch_log_side: (ctx) => {
     ctx.fillStyle = '#ddd';

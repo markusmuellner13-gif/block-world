@@ -53,8 +53,8 @@ export class Physics {
     // Convert movement relative to camera yaw
     const yaw = this._yaw || 0;
     const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
-    const moveX = fx * cosY - fz * sinY;
-    const moveZ = fx * sinY + fz * cosY;
+    const moveX = fx * cosY + fz * sinY;
+    const moveZ = -fx * sinY + fz * cosY;
 
     if (this.flying) {
       this.velocity.x = moveX * speed;

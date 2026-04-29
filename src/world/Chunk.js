@@ -80,9 +80,9 @@ export class Chunk {
 
             const faceUVs = [u0, v1, u1, v1, u1, v0, u0, v0];
 
-            // Normal-based shading (like Minecraft)
+            // Minecraft face shading: top=1.0, N/S=0.8, E/W=0.6, bottom=0.5
             const [fnx, fny, fnz] = face.normal;
-            const shade = fny === 1 ? 1.0 : fny === -1 ? 0.6 : Math.abs(fnx) === 1 ? 0.8 : 0.75;
+            const shade = fny === 1 ? 1.0 : fny === -1 ? 0.5 : Math.abs(fnx) === 1 ? 0.6 : 0.8;
 
             const arr  = isWater ? wPositions : positions;
             const narr = isWater ? wNormals   : normals;

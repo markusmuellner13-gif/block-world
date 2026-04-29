@@ -10,14 +10,14 @@ const HOTBAR_COLORS = {
 
 function blockColor(id) {
   if (!id) return '#888';
-  if (id === BLOCKS.GRASS)       return '#5a9e3c';
-  if (id === BLOCKS.DIRT)        return '#8b6340';
+  if (id === BLOCKS.GRASS)       return '#5da62c';
+  if (id === BLOCKS.DIRT)        return '#866043';
   if (id === BLOCKS.STONE)       return '#888';
   if (id === BLOCKS.SAND)        return '#d4b860';
   if (id === BLOCKS.WOOD_LOG || id === BLOCKS.BIRCH_LOG || id === BLOCKS.PINE_LOG) return '#8B6914';
   if (id === BLOCKS.LEAVES || id === BLOCKS.LEAVES_BIRCH || id === BLOCKS.LEAVES_PINE) return '#2d8b1e';
   if (id === BLOCKS.PLANKS_OAK || id === BLOCKS.PLANKS_BIRCH || id === BLOCKS.PLANKS_PINE) return '#a07038';
-  if (id === BLOCKS.WATER)       return '#1a6ea0';
+  if (id === BLOCKS.WATER)       return '#3f76e4';
   if (id === BLOCKS.DIAMOND_ORE) return '#50e8e0';
   if (id === BLOCKS.GOLD_ORE)    return '#f0c820';
   if (id === BLOCKS.IRON_ORE)    return '#d4967a';
@@ -118,7 +118,7 @@ export class HUD {
       line-height:1.6;
     `;
     hint.innerHTML = `WASD: Move &nbsp; Space: Jump &nbsp; Shift: Sprint<br>
-      F: Camera &nbsp; V: Fly &nbsp; E: Inventory &nbsp; Esc: Pause<br>
+      F: Camera &nbsp; V / 2×Space: Fly (Creative) &nbsp; E: Inventory &nbsp; Esc: Pause<br>
       LMB: Break &nbsp; RMB: Place &nbsp; 1-9: Hotbar`;
     this.root.appendChild(hint);
 
@@ -133,6 +133,19 @@ export class HUD {
     creativeBadge.textContent = 'CREATIVE';
     this._creativeBadge = creativeBadge;
     this.root.appendChild(creativeBadge);
+
+    // Fly toggle button (creative mode only)
+    const flyBtn = document.createElement('button');
+    flyBtn.style.cssText = `
+      position:absolute; top:44px; left:50%; transform:translateX(-50%);
+      background:rgba(30,30,60,0.85); color:#a0c0ff; font-size:11px;
+      padding:3px 14px; border-radius:10px; border:1px solid #5566cc;
+      cursor:pointer; display:none; letter-spacing:1px; pointer-events:all;
+      font-family:'Courier New',monospace;
+    `;
+    flyBtn.addEventListener('click', () => this.game.player.toggleFly());
+    this._flyBtn = flyBtn;
+    this.root.appendChild(flyBtn);
 
     // Notification area
     const notifArea = document.createElement('div');
@@ -285,7 +298,15 @@ export class HUD {
     this._updateHotbar();
     this._updateHealth();
     this._updateCamera();
-    this._creativeBadge.style.display = this.game?.mode === 'creative' ? 'block' : 'none';
+    const isCreative = this.game?.mode === 'creative';
+    this._creativeBadge.style.display = isCreative ? 'block' : 'none';
+    this._flyBtn.style.display = isCreative ? 'block' : 'none';
+    if (isCreative) {
+      const flying = this.game.player.physics.flying;
+      this._flyBtn.textContent = flying ? '✈ FLY: ON  [V]' : '▶ FLY: OFF [V]';
+      this._flyBtn.style.color = flying ? '#80ffcc' : '#a0c0ff';
+      this._flyBtn.style.borderColor = flying ? '#44aa88' : '#5566cc';
+    }
   }
 
   _updateHotbar() {
@@ -329,23 +350,31 @@ export class HUD {
     for (let i = 0; i < 10; i++) {
       const h = document.createElement('div');
       const full = (this.player.health / 2) > i;
-      const half = !full && (this.player.health / 2) > i - 0.5;
       h.style.cssText = `
         width:16px; height:16px; font-size:14px; line-height:16px; text-align:center;
         filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
       `;
-      h.textContent = full ? '♥' : half ? '♡' : '♡';
+      h.textContent = '♥';
       h.style.color = full ? '#ff2222' : '#555';
       this._healthEl.appendChild(h);
     }
 
-    // XP
-    const xpPct = (this.player.xp % 100);
-    this._xpFill.style.width = xpPct + '%';
+    // Food bar
+    this._foodEl.innerHTML = '';
+    for (let i = 0; i < 10; i++) {
+      const f = document.createElement('div');
+      const full = (this.player.food / 2) > i;
+      f.style.cssText = `
+        width:16px; height:16px; font-size:14px; line-height:16px; text-align:center;
+        filter: drop-shadow(0 0 2px rgba(0,0,0,0.8));
+      `;
+      f.textContent = '◉';
+      f.style.color = full ? '#d4a030' : '#555';
+      this._foodEl.appendChild(f);
+    }
 
-    // Camera mode
-    const modeNames = { first: '1st Person', third: '3rd Person', fifth: '5th Person' };
-    this._camIndicator.textContent = modeNames[this.player.cameraMode] || '';
+    // XP
+    this._xpFill.style.width = (this.player.xp % 100) + '%';
   }
 
   _updateCamera() {
