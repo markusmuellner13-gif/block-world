@@ -151,20 +151,37 @@ export const BLOCK_HARDNESS = new Float32Array(BLOCK_COUNT + 1);
   H[BLOCKS.TALL_GRASS]     = 0.0;
 }
 
+// Used by Chunk.js face-culling: only render a face when the NEIGHBOUR is transparent
 export const BLOCK_IS_TRANSPARENT = new Uint8Array(BLOCK_COUNT + 1);
 {
   const T = BLOCK_IS_TRANSPARENT;
   T[BLOCKS.AIR]           = 1;
   T[BLOCKS.WATER]         = 1;
   T[BLOCKS.GLASS]         = 1;
-  T[BLOCKS.LEAVES]        = 1;
-  T[BLOCKS.LEAVES_BIRCH]  = 1;
-  T[BLOCKS.LEAVES_PINE]   = 1;
+  T[BLOCKS.ICE]           = 1;
+  // Sprite-like blocks still need neighbours to render faces toward them
   T[BLOCKS.FLOWER_ROSE]   = 1;
   T[BLOCKS.FLOWER_YELLOW] = 1;
   T[BLOCKS.MUSHROOM]      = 1;
   T[BLOCKS.TALL_GRASS]    = 1;
   T[BLOCKS.WHEAT]         = 1;
+  // Leaves are now opaque (no holes in texture) – removed from transparent
+}
+
+// Used by Physics.js: player and entities can pass through these blocks
+export const BLOCK_IS_PASSABLE = new Uint8Array(BLOCK_COUNT + 1);
+{
+  const P = BLOCK_IS_PASSABLE;
+  P[BLOCKS.AIR]           = 1;
+  P[BLOCKS.WATER]         = 1;
+  P[BLOCKS.LEAVES]        = 1;
+  P[BLOCKS.LEAVES_BIRCH]  = 1;
+  P[BLOCKS.LEAVES_PINE]   = 1;
+  P[BLOCKS.FLOWER_ROSE]   = 1;
+  P[BLOCKS.FLOWER_YELLOW] = 1;
+  P[BLOCKS.MUSHROOM]      = 1;
+  P[BLOCKS.TALL_GRASS]    = 1;
+  P[BLOCKS.WHEAT]         = 1;
 }
 
 export const BLOCK_EMITS_LIGHT = new Uint8Array(BLOCK_COUNT + 1);

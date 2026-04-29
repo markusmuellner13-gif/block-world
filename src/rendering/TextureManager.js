@@ -163,13 +163,7 @@ const BLOCK_TEXTURES = {
   },
   leaves:       (ctx) => {
     drawNoisy(ctx, '#4a9e20', '#3a8a14', '#5ab02e');
-    for (let y = 0; y < TEX; y++) {
-      for (let x = 0; x < TEX; x++) {
-        if (noise2(x * 2.1, y * 2.1, 11) > 0.86) {
-          ctx.clearRect(x, y, 1, 1);
-        }
-      }
-    }
+    // No clearRect holes – leaves are fully solid (opaque)
   },
   leaves_birch: (ctx) => {
     drawNoisy(ctx, '#5db030', '#4a9e22', '#6ec040');

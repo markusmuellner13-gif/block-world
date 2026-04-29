@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BLOCKS, BLOCK_IS_TRANSPARENT } from '../world/BlockRegistry.js';
+import { BLOCKS, BLOCK_IS_PASSABLE } from '../world/BlockRegistry.js';
 import {
   PLAYER_HEIGHT, PLAYER_WIDTH, GRAVITY,
   JUMP_VELOCITY, WALK_SPEED, SPRINT_SPEED, SNEAK_SPEED, FLY_SPEED, SEA_LEVEL
@@ -26,7 +26,7 @@ export class Physics {
       for (let by = Math.floor(y0); by <= Math.floor(y1 - 0.001); by++) {
         for (let bz = Math.floor(z0); bz <= Math.floor(z1 - 0.001); bz++) {
           const b = this.world.getBlockWorld(bx, by, bz);
-          if (b !== BLOCKS.AIR && b !== BLOCKS.WATER && !BLOCK_IS_TRANSPARENT[b]) return true;
+          if (b !== BLOCKS.AIR && !BLOCK_IS_PASSABLE[b]) return true;
         }
       }
     }
