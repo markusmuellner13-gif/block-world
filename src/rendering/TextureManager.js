@@ -451,6 +451,16 @@ const BLOCK_TEXTURES = {
       ctx.fillRect(0, y, TEX, 1);
     }
   },
+  cactus_top:   (ctx) => {
+    ctx.fillStyle = '#1a5a0a';
+    ctx.fillRect(0, 0, TEX, TEX);
+    ctx.fillStyle = '#2a7a1a';
+    ctx.fillRect(2, 2, 12, 12);
+    ctx.fillStyle = '#3a8a2a';
+    ctx.fillRect(5, 5, 6, 6);
+    ctx.fillStyle = '#4a9a2a';
+    ctx.fillRect(7, 7, 2, 2);
+  },
   soul_sand:    (ctx) => {
     drawNoisy(ctx, '#4a3020', '#3a2010', '#5a4030');
     // faces

@@ -8,33 +8,43 @@ import { MobileControls } from './ui/MobileControls.js';
 import { WorldSettings } from './ui/WorldSettings.js';
 import { Sky } from './rendering/Sky.js';
 import { TextureManager } from './rendering/TextureManager.js';
+import { ParticleSystem } from './rendering/ParticleSystem.js';
+import { AudioManager } from './audio/AudioManager.js';
 import { EntityManager } from './entities/EntityManager.js';
 import { RemotePlayer } from './multiplayer/RemotePlayer.js';
 import { BLOCKS } from './world/BlockRegistry.js';
 import { DAY_LENGTH } from './Constants.js';
 
+const DAY_COLOR   = new THREE.Color(0x87ceeb);
+const DUSK_COLOR  = new THREE.Color(0xff7733);
+const NIGHT_COLOR = new THREE.Color(0x05051a);
+
 export class Game {
   constructor(canvas, uiRoot, config = {}) {
-    this.canvas     = canvas;
-    this.uiRoot     = uiRoot;
-    this.config     = config;
-    this.mode       = config.mode || 'survival';  // 'survival' | 'creative'
-    this.multiplayer = config.multiplayer || null; // MultiplayerClient or null
-    this.roomCode   = config.roomCode || null;
+    this.canvas      = canvas;
+    this.uiRoot      = uiRoot;
+    this.config      = config;
+    this.mode        = config.mode || 'survival';
+    this.multiplayer = config.multiplayer || null;
+    this.roomCode    = config.roomCode || null;
 
-    this.running    = false;
-    this.paused     = false;
-    this.dayTime    = 0.25;
-    this._lastTime  = 0;
+    this.running       = false;
+    this.paused        = false;
+    this.inventoryOpen = false;
+    this.dayTime       = 0.25;
+    this._lastTime     = 0;
     this._mpUpdateTimer = 0;
+    this._currentFOV   = 70;
 
-    this.remotePlayers = new Map(); // id → RemotePlayer
+    this.remotePlayers = new Map();
 
     this._setupRenderer();
     this._setupScene();
 
     this.textures  = new TextureManager();
+    this.audio     = new AudioManager();
     this.world     = new World(this.scene, this.textures, config.seed);
+    this.particles = new ParticleSystem(this.scene);
     this.entities  = new EntityManager(this.scene, this.world, this.textures);
     this.player    = new Player(this.scene, this.world, this.camera, this);
     this.controls  = new Controls(this.canvas, this.player, this);
@@ -89,11 +99,16 @@ export class Game {
       this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     });
     document.addEventListener('keydown', (e) => {
-      if (e.code === 'Escape') this.togglePause();
+      if (e.code === 'Escape') {
+        if (this.inventoryOpen) {
+          this.hud.closeInventory();
+        } else {
+          this.togglePause();
+        }
+      }
     });
   }
 
-  // ── Multiplayer wiring ───────────────────────────────────────────────────
   _bindMultiplayer() {
     const mp = this.multiplayer;
 
@@ -106,7 +121,7 @@ export class Game {
     mp.on('playerLeave', ({ id }) => {
       const rp = this.remotePlayers.get(id);
       if (rp) { rp.dispose(this.scene); this.remotePlayers.delete(id); }
-      this.hud.showNotification(`A player left`);
+      this.hud.showNotification('A player left');
     });
 
     mp.on('playerUpdate', ({ id, x, y, z, yaw, pitch }) => {
@@ -132,14 +147,12 @@ export class Game {
       this.hud.showNotification('Disconnected from server');
     });
 
-    // Spawn remote players already in room
     for (const p of mp.getRemotePlayers()) {
       const rp = new RemotePlayer(p.id, p.name, this.scene);
       this.remotePlayers.set(p.id, rp);
     }
   }
 
-  // ── Public API ───────────────────────────────────────────────────────────
   setMode(mode) {
     this.mode = mode;
     this.player.applyMode(mode);
@@ -165,9 +178,14 @@ export class Game {
     else             this.controls.lock();
   }
 
+  setInventoryOpen(open) {
+    this.inventoryOpen = open;
+    if (open) this.controls.unlock();
+    else      this.controls.lock();
+  }
+
   start() {
     this.running = true;
-    // Force-generate spawn area so player doesn't fall through
     const spawnY = this.world.generateSpawnArea();
     this.player.spawnAt(0, spawnY, 0);
     this.menu.showStart();
@@ -180,42 +198,70 @@ export class Game {
 
     const dt = Math.min((timestamp - this._lastTime) / 1000, 0.05);
     this._lastTime = timestamp;
-    if (this.paused || !this.controls.locked) return;
 
+    if (this.paused) return;
+
+    // Always update world and sky regardless of pointer lock / inventory state
     this.dayTime = (this.dayTime + dt / DAY_LENGTH) % 1;
     this._updateLighting();
-
     this.world.update(this.player.position);
-    this.player.update(dt, this.controls);
-    this.entities.update(dt, this.player.position);
     this.sky.update(this.dayTime);
-    this.hud.update();
+    this.particles.update(dt);
 
-    // Send position to server ~20 times/sec
-    if (this.multiplayer?.connected) {
-      this._mpUpdateTimer += dt;
-      if (this._mpUpdateTimer >= 0.05) {
-        this._mpUpdateTimer = 0;
-        const p = this.player;
-        this.multiplayer.sendPlayerUpdate(
-          p.position.x, p.position.y, p.position.z, p.yaw, p.pitch
-        );
+    if (this.controls.locked) {
+      // Full update: player can move, entities tick
+      this.player.update(dt, this.controls);
+      this.entities.update(dt, this.player.position, this);
+      this._updateFOV(dt);
+
+      if (this.multiplayer?.connected) {
+        this._mpUpdateTimer += dt;
+        if (this._mpUpdateTimer >= 0.05) {
+          this._mpUpdateTimer = 0;
+          const p = this.player;
+          this.multiplayer.sendPlayerUpdate(p.position.x, p.position.y, p.position.z, p.yaw, p.pitch);
+        }
       }
     }
+    // Inventory open or briefly unlocked: world still renders, player frozen
 
+    this.hud.update(dt);
     this.renderer.render(this.scene, this.camera);
   }
 
+  _updateFOV(dt) {
+    const sprinting   = this.controls.sprinting && this.player.physics.onGround && !this.player.physics.inWater;
+    const targetFOV   = sprinting ? 85 : 70;
+    this._currentFOV += (targetFOV - this._currentFOV) * Math.min(1, 8 * dt);
+    if (Math.abs(this._currentFOV - this.camera.fov) > 0.05) {
+      this.camera.fov = this._currentFOV;
+      this.camera.updateProjectionMatrix();
+    }
+  }
+
   _updateLighting() {
-    const angle      = this.dayTime * Math.PI * 2 - Math.PI / 2;
-    this.sunLight.position.set(Math.cos(angle) * 100, Math.sin(angle) * 100, 50);
-    const dayStrength  = Math.max(0, Math.sin(angle + Math.PI / 2));
-    const nightBlend   = 1 - dayStrength;
-    const sky          = new THREE.Color(0x87ceeb).lerp(new THREE.Color(0x05051a), nightBlend);
-    this.scene.background   = sky;
+    // t: 0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset
+    const angle        = this.dayTime * Math.PI * 2 - Math.PI / 2;
+    const sinElev      = Math.sin(angle + Math.PI / 2);  // +1 at noon, -1 at midnight
+    const dayStrength  = Math.max(0, sinElev);
+    // horizon factor peaks at sunrise (t≈0.25) and sunset (t≈0.75) when sun is near horizon
+    const horizFactor  = Math.max(0, 1 - Math.abs(sinElev) * 4);
+
+    // Tri-color sky blend: night → dusk/dawn glow → day
+    const sky = NIGHT_COLOR.clone().lerp(DAY_COLOR, dayStrength);
+    sky.lerp(DUSK_COLOR, horizFactor * 0.55);
+
+    this.scene.background = sky;
     this.scene.fog.color.copy(sky);
-    this.sunLight.intensity  = dayStrength * 1.2;
-    this.ambientLight.intensity = 0.15 + dayStrength * 0.45;
-    this.sunLight.color.setHSL(0.08, 0.5, 0.5 + dayStrength * 0.5);
+
+    this.sunLight.position.set(Math.cos(angle) * 100, Math.sin(angle) * 100, 50);
+    this.sunLight.intensity          = dayStrength * 1.2;
+    this.ambientLight.intensity      = 0.15 + dayStrength * 0.45;
+
+    // Warm orange tint at horizon, white at noon
+    const sunHue = 0.08 + horizFactor * 0.06;
+    const sunSat = 0.5  + horizFactor * 0.3;
+    const sunLit = 0.5  + dayStrength * 0.5;
+    this.sunLight.color.setHSL(sunHue, sunSat, sunLit);
   }
 }

@@ -10,20 +10,19 @@ export class Inventory {
     this.slots = new Array(INV_SIZE).fill(null);
     this.selectedSlot = 0;
 
-    // Populate starter kit
-    this._addStarter();
   }
 
-  _addStarter() {
-    this.slots[0] = { id: BLOCKS.PLANKS_OAK,  name: 'Oak Planks',     count: 64, type: 'block' };
-    this.slots[1] = makeItem('pickaxe', 'iron');
-    this.slots[2] = makeItem('axe', 'iron');
-    this.slots[3] = makeItem('shovel', 'iron');
-    this.slots[4] = makeItem('sword', 'iron');
-    this.slots[5] = { id: BLOCKS.GLOWSTONE,    name: 'Glowstone',      count: 64, type: 'block' };
-    this.slots[6] = { id: BLOCKS.STONE,        name: 'Stone',          count: 64, type: 'block' };
-    this.slots[7] = { id: BLOCKS.WOOD_LOG,     name: 'Oak Log',        count: 32, type: 'block' };
-    this.slots[8] = { id: BLOCKS.GRASS,        name: 'Grass Block',    count: 32, type: 'block' };
+  // Called from Player.applyMode when switching to creative
+  giveCreativeKit() {
+    this.slots[0] = makeItem('pickaxe', 'diamond');
+    this.slots[1] = makeItem('axe',     'diamond');
+    this.slots[2] = makeItem('shovel',  'diamond');
+    this.slots[3] = makeItem('sword',   'diamond');
+    this.slots[4] = { id: BLOCKS.PLANKS_OAK, name: 'Oak Planks', count: 64, type: 'block' };
+    this.slots[5] = { id: BLOCKS.STONE,      name: 'Stone',       count: 64, type: 'block' };
+    this.slots[6] = { id: BLOCKS.GLOWSTONE,  name: 'Glowstone',   count: 64, type: 'block' };
+    this.slots[7] = { id: BLOCKS.WOOD_LOG,   name: 'Oak Log',     count: 64, type: 'block' };
+    this.slots[8] = { id: BLOCKS.GRASS,      name: 'Grass Block', count: 64, type: 'block' };
   }
 
   getSelected() {

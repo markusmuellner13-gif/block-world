@@ -10,13 +10,16 @@ import {
 const SENSITIVITY   = 0.002;
 const THIRD_OFFSET  = new THREE.Vector3(0, 2, 6);
 const FIFTH_OFFSET  = new THREE.Vector3(0, 4, 14);
+// Hunger drain rates (food points per second)
+const HUNGER_WALK   = 1 / 45;
+const HUNGER_SPRINT = 1 / 15;
 
 export class Player {
   constructor(scene, world, camera, game) {
     this.scene    = scene;
     this.world    = world;
     this.camera   = camera;
-    this.game     = game;           // reference to Game for mode access
+    this.game     = game;
     this.position = new THREE.Vector3(0, SEA_LEVEL + 5, 0);
 
     this.yaw   = 0;
@@ -26,7 +29,6 @@ export class Player {
     this.physics   = new Physics(world);
     this.inventory = new Inventory();
 
-    // Stats
     this.health    = 20;
     this.maxHealth = 20;
     this.food      = 20;
@@ -36,8 +38,9 @@ export class Player {
     this.breakingBlock = null;
     this.breakProgress = 0;
     this.placeDelay    = 0;
-    this._doubleTapSpace = 0;
-    this._lastSpaceTime  = 0;
+    this._lastSpaceTime = 0;
+    this._hungerTimer   = 0;
+    this._sneaking      = false;
 
     this._buildCharacter();
     this._buildArmModel();
@@ -45,18 +48,16 @@ export class Player {
     this._buildHighlight();
   }
 
-  // Called immediately after world spawn area is ready
   spawnAt(x, y, z) {
     this.position.set(x, y + 0.1, z);
     this.physics.velocity.set(0, 0, 0);
   }
 
-  // Called when game mode changes (survival ↔ creative)
   applyMode(mode) {
     if (mode === 'creative') {
       this.health = this.maxHealth;
       this.food   = this.maxFood;
-      // Flying is opt-in in creative; press V or double-tap Space to enable
+      this.inventory.giveCreativeKit();
     } else {
       this.physics.flying = false;
     }
@@ -88,6 +89,7 @@ export class Player {
     this._armL = armL; this._armR = armR;
     this._legL = legL; this._legR = legR;
     this._head = head;
+    this._body = body;
     this.scene.add(this.characterGroup);
   }
 
@@ -125,7 +127,6 @@ export class Player {
   }
 
   toggleFly() {
-    // In creative, fly is always available; in survival it's a debug toggle
     this.physics.flying = !this.physics.flying;
   }
 
@@ -133,18 +134,17 @@ export class Player {
     if (!controls) return;
 
     const { dx, dy, scroll } = controls.consumeDeltas();
+    this._sneaking = controls.sneaking;
 
-    // Camera rotation
     this.yaw   -= dx * SENSITIVITY;
     this.pitch  = Math.max(-Math.PI / 2 + 0.01, Math.min(Math.PI / 2 - 0.01, this.pitch - dy * SENSITIVITY));
 
-    // Hotbar scroll
     if (scroll !== 0) {
       const dir = scroll > 0 ? 1 : -1;
       this.inventory.selectSlot((this.inventory.selectedSlot + dir + 9) % 9);
     }
 
-    // Double-tap Space → toggle fly in creative (only fires on key-down edge)
+    // Double-tap Space → toggle fly in creative
     if (this.mode === 'creative') {
       const spaceDown = controls.isDown('Space');
       if (spaceDown && !this._prevSpaceDown) {
@@ -159,17 +159,42 @@ export class Player {
       this._prevSpaceDown = spaceDown;
     }
 
-    // Survival damage (fall damage handled in Physics)
     if (this.mode === 'survival') {
+      // Fall damage
       if (this.physics.onGround && this.physics._fallSpeed > 10) {
         const dmg = Math.floor((this.physics._fallSpeed - 10) * 0.5);
         this.health = Math.max(0, this.health - dmg);
+        if (dmg > 0) this.game?.audio?.playerHurt();
+      }
+
+      // Hunger drain while moving
+      const { fx, fz } = controls.getMovement();
+      const isMoving = Math.abs(fx) + Math.abs(fz) > 0.1;
+      if (isMoving && this.physics.onGround && this.food > 0) {
+        const rate = controls.sprinting ? HUNGER_SPRINT : HUNGER_WALK;
+        this._hungerTimer += dt * rate;
+        if (this._hungerTimer >= 1) {
+          this.food = Math.max(0, this.food - 1);
+          this._hungerTimer -= 1;
+        }
+      }
+
+      // At zero food, can't sprint; at very low food health drains
+      if (this.food === 0) {
+        this._hungerTimer += dt * 0.01; // ~1 HP per 100s at zero food
+        if (this._hungerTimer >= 1) {
+          this.health = Math.max(1, this.health - 1);
+          this._hungerTimer -= 1;
+        }
       }
     } else {
-      // Creative: always full health/food, always fly-capable
       this.health = this.maxHealth;
       this.food   = this.maxFood;
     }
+
+    // Footstep audio
+    const { fx: mx, fz: mz } = controls.getMovement();
+    this.game?.audio?.updateFootsteps(dt, Math.abs(mx) + Math.abs(mz) > 0.1, this.physics.onGround, controls.sprinting);
 
     this.physics.setYaw(this.yaw);
     this.physics.step(this.position, controls, dt);
@@ -180,7 +205,9 @@ export class Player {
   }
 
   _updateCamera() {
-    const eyePos = this.position.clone().add(new THREE.Vector3(0, PLAYER_EYE_HEIGHT, 0));
+    // Sneak lowers the eye slightly (crouch effect)
+    const eyeOff = this._sneaking ? PLAYER_EYE_HEIGHT - 0.35 : PLAYER_EYE_HEIGHT;
+    const eyePos = this.position.clone().add(new THREE.Vector3(0, eyeOff, 0));
     const qYaw   = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
     const qPitch = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), this.pitch);
     const q      = qYaw.multiply(qPitch);
@@ -195,8 +222,14 @@ export class Player {
       this.camera.lookAt(eyePos);
     }
 
-    this.characterGroup.position.copy(this.position);
+    // Sneak: visually lower the character body
+    const sneakLower = this._sneaking ? -0.25 : 0;
+    this.characterGroup.position.copy(this.position).add(new THREE.Vector3(0, sneakLower, 0));
     this.characterGroup.rotation.y = this.yaw;
+
+    // Tilt body forward when sneaking
+    this._body.rotation.x = this._sneaking ? 0.4 : 0;
+    this._head.rotation.x = this._sneaking ? -0.3 : 0;
   }
 
   _animateCharacter(controls) {
@@ -243,7 +276,6 @@ export class Player {
       const hardness = BLOCK_HARDNESS[blockId];
 
       if (hardness === -1) {
-        // Indestructible block — reset progress but don't skip place-block code
         this.breakingBlock = null;
         this.breakProgress = 0;
         this._breakOverlay.visible = false;
@@ -263,6 +295,8 @@ export class Player {
           const { x, y, z } = hit.position;
           this.world.setBlockWorld(x, y, z, BLOCKS.AIR);
           this.game?.multiplayer?.sendBlockChange(x, y, z, BLOCKS.AIR);
+          this.game?.audio?.blockBreak();
+          this.game?.particles?.blockBurst(x, y, z, blockId);
           if (this.mode === 'survival') {
             this.inventory.addItem({ id: blockId, name: this._blockName(blockId), count: 1 });
           }
@@ -289,7 +323,7 @@ export class Player {
         if (!tooClose) {
           this.world.setBlockWorld(x, y, z, item.id);
           this.game?.multiplayer?.sendBlockChange(x, y, z, item.id);
-          // Creative: don't consume; survival: consume
+          this.game?.audio?.blockPlace();
           if (this.mode === 'survival') this.inventory.consumeSelected();
           this.placeDelay = 0.25;
         }

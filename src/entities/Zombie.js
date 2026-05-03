@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 
-const SPEED         = 2.2;
-const DETECT_RANGE  = 22;
-const ATTACK_RANGE  = 1.4;
-const ATTACK_CD     = 1.0;
-const DAMAGE        = 4;
-const GRAVITY       = -20;
+const SPEED        = 2.2;
+const DETECT_RANGE = 22;
+const ATTACK_RANGE = 1.4;
+const ATTACK_CD    = 1.0;
+const DAMAGE       = 4;
+const GRAVITY      = -20;
 
 export class Zombie {
   constructor(position, world) {
@@ -17,6 +17,7 @@ export class Zombie {
     this.dead     = false;
     this._attackTimer = 0;
     this._groanTimer  = 2 + Math.random() * 3;
+    this._burnTimer   = 0;
 
     this.group = new THREE.Group();
     this._buildModel();
@@ -36,6 +37,7 @@ export class Zombie {
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skin);
     head.position.y = 1.5;
 
+    // Arms outstretched forward (classic zombie pose)
     this._armL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.75, 0.25), shirt);
     this._armL.position.set(-0.375, 1.05, 0.22);
     this._armL.rotation.x = -1.2;
@@ -56,11 +58,32 @@ export class Zombie {
   update(dt, playerPos, game) {
     if (this.dead) return;
 
-    this._attackTimer  = Math.max(0, this._attackTimer - dt);
-    this._groanTimer  -= dt;
+    this._attackTimer = Math.max(0, this._attackTimer - dt);
+
+    // Groaning
+    this._groanTimer -= dt;
     if (this._groanTimer <= 0) {
       game?.audio?.zombieGroan();
       this._groanTimer = 4 + Math.random() * 5;
+    }
+
+    // Daylight burning (daytime = game.dayTime 0.25–0.75)
+    const isDay = game && game.dayTime > 0.25 && game.dayTime < 0.75;
+    if (isDay) {
+      const surfY = this.world.getSurfaceHeight(
+        Math.floor(this.position.x), Math.floor(this.position.z)
+      );
+      // Only burn if exposed to open sky
+      if (this.position.y >= surfY - 2) {
+        this._burnTimer += dt;
+        if (this._burnTimer >= 1) {
+          this.takeDamage(1);
+          this._burnTimer = 0;
+          game?.particles?.smoke(this.position.x, this.position.y + 1.5, this.position.z);
+        }
+      }
+    } else {
+      this._burnTimer = 0;
     }
 
     const dist = this.position.distanceTo(playerPos);
@@ -68,7 +91,7 @@ export class Zombie {
     if (dist < DETECT_RANGE) {
       const dx = playerPos.x - this.position.x;
       const dz = playerPos.z - this.position.z;
-      const d  = Math.sqrt(dx*dx + dz*dz);
+      const d  = Math.sqrt(dx * dx + dz * dz);
 
       if (d > ATTACK_RANGE) {
         this.velocity.x = (dx / d) * SPEED;
@@ -95,7 +118,8 @@ export class Zombie {
     const ny = this.position.y + this.velocity.y * dt;
     const nz = this.position.z + this.velocity.z * dt;
 
-    const floorY = this.world.getSurfaceHeight(Math.floor(nx), Math.floor(nz)) - 0.5;
+    // getSurfaceHeight returns the Y directly above the top solid block — that's the floor
+    const floorY = this.world.getSurfaceHeight(Math.floor(nx), Math.floor(nz));
     if (ny <= floorY) {
       this.position.y = floorY;
       this.velocity.y = 0;
@@ -108,7 +132,7 @@ export class Zombie {
     this.position.z = nz;
     this.group.position.copy(this.position);
 
-    const walkSpeed = Math.sqrt(this.velocity.x**2 + this.velocity.z**2);
+    const walkSpeed = Math.sqrt(this.velocity.x ** 2 + this.velocity.z ** 2);
     if (walkSpeed > 0.1) {
       const swing = Math.sin(performance.now() * 0.006) * 0.4;
       this._legL.rotation.x =  swing;
@@ -116,8 +140,15 @@ export class Zombie {
     }
   }
 
-  takeDamage(amount) {
+  // knockbackDir: optional {x, z} unit vector pointing away from attacker
+  takeDamage(amount, knockbackDir = null) {
     this.health -= amount;
+    if (knockbackDir) {
+      this.velocity.x += knockbackDir.x * 6;
+      this.velocity.z += knockbackDir.z * 6;
+      this.velocity.y  = 4;
+      this.onGround    = false;
+    }
     if (this.health <= 0) this.dead = true;
   }
 

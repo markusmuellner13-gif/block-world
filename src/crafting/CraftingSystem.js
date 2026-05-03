@@ -1,58 +1,54 @@
 import { BLOCKS } from '../world/BlockRegistry.js';
 
+// Grid indices for a 2×2 crafting table: [0]=TL [1]=TR [2]=BL [3]=BR
+//
 // Recipe types:
-//  'any1'  – exactly 1 ingredient anywhere in 2x2, rest empty
-//  'fill4' – all 4 slots same ingredient
-//  'row2'  – 2 matching ingredients in same row (any row), rest empty
-//  'col2'  – 2 matching ingredients in same column (any col), rest empty
+//   any1  – exactly 1 ingredient anywhere, rest empty
+//   fill4 – all 4 slots match ingredient
+//   row2  – 2 matching slots in the same row (TL+TR or BL+BR), rest empty
+//   col2  – 2 matching slots in the same column (TL+BL or TR+BR), rest empty
+
+const PLANKS = [BLOCKS.PLANKS_OAK, BLOCKS.PLANKS_BIRCH, BLOCKS.PLANKS_PINE];
+
 const RECIPES = [
   // Logs → planks
-  { type:'any1', ingredient:BLOCKS.WOOD_LOG,   output:{id:BLOCKS.PLANKS_OAK,   count:4, name:'Oak Planks'}   },
-  { type:'any1', ingredient:BLOCKS.BIRCH_LOG,  output:{id:BLOCKS.PLANKS_BIRCH, count:4, name:'Birch Planks'} },
-  { type:'any1', ingredient:BLOCKS.PINE_LOG,   output:{id:BLOCKS.PLANKS_PINE,  count:4, name:'Pine Planks'}  },
-  // Crafting table – 4 of any planks
-  { type:'fill4', ingredient:[BLOCKS.PLANKS_OAK,BLOCKS.PLANKS_BIRCH,BLOCKS.PLANKS_PINE],
-    output:{id:BLOCKS.CRAFTING_TABLE, count:1, name:'Crafting Table'} },
-  // Stone bricks
-  { type:'fill4', ingredient:BLOCKS.STONE,     output:{id:BLOCKS.STONE_BRICK,  count:4, name:'Stone Bricks'} },
-  // Sandstone
-  { type:'fill4', ingredient:BLOCKS.SAND,      output:{id:BLOCKS.SANDSTONE,    count:2, name:'Sandstone'}    },
-  // Wool + any dye wool (exact fill4 per colour already defined by wool colours in BLOCKS)
-  { type:'fill4', ingredient:BLOCKS.GRAVEL,    output:{id:BLOCKS.COBBLESTONE,  count:4, name:'Cobblestone'}  },
-  // Bookshelf – 2x planks row + bookshelf placeholder (simplified)
-  { type:'fill4', ingredient:BLOCKS.CLAY,      output:{id:BLOCKS.BRICK,        count:2, name:'Brick'}        },
+  { type:'any1',  ingredient: BLOCKS.WOOD_LOG,  output:{ id: BLOCKS.PLANKS_OAK,      count: 4, name: 'Oak Planks'    } },
+  { type:'any1',  ingredient: BLOCKS.BIRCH_LOG, output:{ id: BLOCKS.PLANKS_BIRCH,    count: 4, name: 'Birch Planks'  } },
+  { type:'any1',  ingredient: BLOCKS.PINE_LOG,  output:{ id: BLOCKS.PLANKS_PINE,     count: 4, name: 'Pine Planks'   } },
+  // 4 planks (any mix) → crafting table
+  { type:'fill4', ingredient: PLANKS,            output:{ id: BLOCKS.CRAFTING_TABLE,  count: 1, name: 'Crafting Table' } },
+  // Stone variants
+  { type:'fill4', ingredient: BLOCKS.STONE,      output:{ id: BLOCKS.STONE_BRICK,    count: 4, name: 'Stone Bricks'  } },
+  { type:'fill4', ingredient: BLOCKS.COBBLESTONE,output:{ id: BLOCKS.FURNACE,        count: 1, name: 'Furnace'        } },
+  // Sand → glass / sandstone
+  { type:'fill4', ingredient: BLOCKS.SAND,       output:{ id: BLOCKS.SANDSTONE,      count: 4, name: 'Sandstone'     } },
+  { type:'row2',  ingredient: BLOCKS.SAND,       output:{ id: BLOCKS.GLASS,          count: 2, name: 'Glass'         } },
+  // Gravel → cobblestone (compressed)
+  { type:'fill4', ingredient: BLOCKS.GRAVEL,     output:{ id: BLOCKS.COBBLESTONE,    count: 4, name: 'Cobblestone'   } },
+  // Clay → brick block
+  { type:'fill4', ingredient: BLOCKS.CLAY,       output:{ id: BLOCKS.BRICK,          count: 2, name: 'Brick'         } },
+  // Snow (2 in a row) → ice
+  { type:'fill4', ingredient: BLOCKS.SNOW,       output:{ id: BLOCKS.ICE,            count: 2, name: 'Ice'           } },
+  // Planks (col of 2, any type) → more planks cross-recipe (oak output as default)
+  // Mossy cobblestone: cobble + leaves in same row
+  { type:'row2',  ingredient: BLOCKS.MOSSY_COBBLE, output:{ id: BLOCKS.STONE_BRICK,  count: 2, name: 'Stone Bricks'  } },
+  // Wool fill → colour-matched already; extra: bookshelf from planks col
+  { type:'fill4', ingredient: BLOCKS.PLANKS_OAK, output:{ id: BLOCKS.BOOKSHELF,      count: 1, name: 'Bookshelf'     } },
 ];
 
-// Human-readable recipe list for the recipe book UI (includes visual-only 3×3 entries)
-export const RECIPE_BOOK = [
-  { label:'Oak Log → Oak Planks',    grid2x2:[BLOCKS.WOOD_LOG,0,0,0],         result:{id:BLOCKS.PLANKS_OAK,   count:4} },
-  { label:'Birch Log → Birch Planks',grid2x2:[BLOCKS.BIRCH_LOG,0,0,0],        result:{id:BLOCKS.PLANKS_BIRCH, count:4} },
-  { label:'Pine Log → Pine Planks',  grid2x2:[BLOCKS.PINE_LOG,0,0,0],         result:{id:BLOCKS.PLANKS_PINE,  count:4} },
-  { label:'4 Oak Planks → Crafting Table',
-    grid2x2:[BLOCKS.PLANKS_OAK,BLOCKS.PLANKS_OAK,BLOCKS.PLANKS_OAK,BLOCKS.PLANKS_OAK],
-    result:{id:BLOCKS.CRAFTING_TABLE,count:1}
-  },
-  { label:'4 Stone → Stone Bricks',
-    grid2x2:[BLOCKS.STONE,BLOCKS.STONE,BLOCKS.STONE,BLOCKS.STONE],
-    result:{id:BLOCKS.STONE_BRICK,count:4}
-  },
-  { label:'4 Sand → Sandstone',
-    grid2x2:[BLOCKS.SAND,BLOCKS.SAND,BLOCKS.SAND,BLOCKS.SAND],
-    result:{id:BLOCKS.SANDSTONE,count:2}
-  },
-  { label:'4 Gravel → Cobblestone',
-    grid2x2:[BLOCKS.GRAVEL,BLOCKS.GRAVEL,BLOCKS.GRAVEL,BLOCKS.GRAVEL],
-    result:{id:BLOCKS.COBBLESTONE,count:4}
-  },
-  { label:'4 Clay → Bricks',
-    grid2x2:[BLOCKS.CLAY,BLOCKS.CLAY,BLOCKS.CLAY,BLOCKS.CLAY],
-    result:{id:BLOCKS.BRICK,count:2}
-  },
-];
+export const RECIPE_BOOK = RECIPES.map(r => {
+  const ingr  = Array.isArray(r.ingredient) ? r.ingredient[0] : r.ingredient;
+  const grid  = [0, 0, 0, 0];
+  if      (r.type === 'any1')  { grid[0] = ingr; }
+  else if (r.type === 'fill4') { grid.fill(ingr); }
+  else if (r.type === 'row2')  { grid[0] = ingr; grid[1] = ingr; }
+  else if (r.type === 'col2')  { grid[0] = ingr; grid[2] = ingr; }
+  return { label: r.output.name, grid2x2: grid, result: r.output };
+});
 
 export class CraftingSystem {
   constructor() {
-    this.grid = [null, null, null, null]; // [tl, tr, bl, br]
+    this.grid = [null, null, null, null]; // [TL, TR, BL, BR]
   }
 
   setSlot(i, item) { this.grid[i] = item ? { ...item } : null; }
@@ -67,22 +63,38 @@ export class CraftingSystem {
   }
 
   _matches(ids, recipe) {
-    const ingr = recipe.ingredient;
-    const isMatch = id => Array.isArray(ingr) ? ingr.includes(id) : id === ingr;
+    const ingr    = recipe.ingredient;
+    const isMatch = id => id !== 0 && (Array.isArray(ingr) ? ingr.includes(id) : id === ingr);
 
-    if (recipe.type === 'any1') {
-      const nonEmpty = ids.filter(id => id !== 0);
-      return nonEmpty.length === 1 && isMatch(nonEmpty[0]);
+    switch (recipe.type) {
+      case 'any1': {
+        const filled = ids.filter(id => id !== 0);
+        return filled.length === 1 && isMatch(filled[0]);
+      }
+      case 'fill4':
+        return ids.every(id => isMatch(id));
+
+      case 'row2': {
+        // top row: [0,1] match, [2,3] empty
+        const topRow = ids[0] !== 0 && isMatch(ids[0]) && ids[0] === ids[1] && ids[2] === 0 && ids[3] === 0;
+        // bottom row: [2,3] match, [0,1] empty
+        const botRow = ids[2] !== 0 && isMatch(ids[2]) && ids[2] === ids[3] && ids[0] === 0 && ids[1] === 0;
+        return topRow || botRow;
+      }
+      case 'col2': {
+        // left col: [0,2] match, [1,3] empty
+        const leftCol  = ids[0] !== 0 && isMatch(ids[0]) && ids[0] === ids[2] && ids[1] === 0 && ids[3] === 0;
+        // right col: [1,3] match, [0,2] empty
+        const rightCol = ids[1] !== 0 && isMatch(ids[1]) && ids[1] === ids[3] && ids[0] === 0 && ids[2] === 0;
+        return leftCol || rightCol;
+      }
+      default:
+        return false;
     }
-
-    if (recipe.type === 'fill4') {
-      return ids.every(id => isMatch(id));
-    }
-
-    return false;
   }
 
-  consume(inventory) {
+  // Consume one of each ingredient in the grid and return the crafted item
+  consume() {
     const result = this.getResult();
     if (!result) return null;
     for (let i = 0; i < 4; i++) {

@@ -20,7 +20,8 @@ export class Controls {
     this.touchButtons = {};
 
     // Sprint state (double-tap W)
-    this._sprintDetect = { lastPress: 0, active: false };
+    this._sprintDetect   = { lastPress: 0, active: false };
+    this._joystickSprint = false;
 
     this._bindPointerLock();
     this._bindKeyboard();
@@ -160,7 +161,14 @@ export class Controls {
     if (this.isDown('KeyS') || this.isDown('ArrowDown'))  fz += 1;
     if (this.isDown('KeyA') || this.isDown('ArrowLeft'))  fx -= 1;
     if (this.isDown('KeyD') || this.isDown('ArrowRight')) fx += 1;
-    if (this.joystick.active) { fx += this.joystick.x; fz += this.joystick.y; }
+    if (this.joystick.active) {
+      fx += this.joystick.x;
+      fz += this.joystick.y;
+      // Auto-sprint when joystick is pushed close to the edge
+      this._joystickSprint = Math.sqrt(this.joystick.x ** 2 + this.joystick.y ** 2) > 0.85;
+    } else {
+      this._joystickSprint = false;
+    }
     const len = Math.sqrt(fx*fx + fz*fz);
     if (len > 1) { fx /= len; fz /= len; }
     return { fx, fz };
@@ -170,6 +178,7 @@ export class Controls {
   // Sprint = double-tap W (held) – also cancel when sneaking
   get sprinting() {
     return (this._sprintDetect.active && this.isDown('KeyW') && !this.sneaking)
+      || this._joystickSprint
       || !!this.touchButtons['sprint'];
   }
   // Sneak = Shift (left or right)

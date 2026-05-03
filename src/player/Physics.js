@@ -5,6 +5,8 @@ import {
   JUMP_VELOCITY, WALK_SPEED, SPRINT_SPEED, SNEAK_SPEED, FLY_SPEED, SEA_LEVEL
 } from '../Constants.js';
 
+const SOUL_SAND_SLOW = 0.4; // fraction of normal speed on soul sand
+
 export class Physics {
   constructor(world) {
     this.world = world;
@@ -34,8 +36,12 @@ export class Physics {
   }
 
   _isInWater(px, py, pz) {
-    const eyeY = py + PLAYER_HEIGHT * 0.5;
-    return this.world.getBlockWorld(Math.floor(px), Math.floor(eyeY), Math.floor(pz)) === BLOCKS.WATER;
+    // Check at feet level — any water the player is standing in counts
+    return this.world.getBlockWorld(Math.floor(px), Math.floor(py + 0.05), Math.floor(pz)) === BLOCKS.WATER;
+  }
+
+  _blockBelow(px, py, pz) {
+    return this.world.getBlockWorld(Math.floor(px), Math.floor(py - 0.1), Math.floor(pz));
   }
 
   step(position, controls, dt) {
@@ -49,6 +55,11 @@ export class Physics {
     let speed = sneaking ? SNEAK_SPEED : sprinting ? SPRINT_SPEED : WALK_SPEED;
     if (this.inWater) speed *= 0.5;
     if (this.flying) speed = FLY_SPEED;
+
+    // Soul sand slows horizontal movement
+    if (!this.flying && this._blockBelow(position.x, position.y, position.z) === BLOCKS.SOUL_SAND) {
+      speed *= SOUL_SAND_SLOW;
+    }
 
     // Convert movement relative to camera yaw
     const yaw = this._yaw || 0;
@@ -101,7 +112,8 @@ export class Physics {
       // Y
       if (this._collides(nx, ny, nz)) {
         if (this.velocity.y < 0) {
-          this._fallSpeed = -this.velocity.y; // record speed at impact
+          // No fall damage when landing in water
+          this._fallSpeed = this.inWater ? 0 : -this.velocity.y;
           ny = Math.floor(ny) + 1 - 0.001;
           this.onGround = true;
         } else {

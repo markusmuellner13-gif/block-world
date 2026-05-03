@@ -165,7 +165,10 @@ export const BLOCK_IS_TRANSPARENT = new Uint8Array(BLOCK_COUNT + 1);
   T[BLOCKS.MUSHROOM]      = 1;
   T[BLOCKS.TALL_GRASS]    = 1;
   T[BLOCKS.WHEAT]         = 1;
-  // Leaves are now opaque (no holes in texture) – removed from transparent
+  // Leaves are passable so neighbour faces must render through them
+  T[BLOCKS.LEAVES]        = 1;
+  T[BLOCKS.LEAVES_BIRCH]  = 1;
+  T[BLOCKS.LEAVES_PINE]   = 1;
 }
 
 // Used by Physics.js: player and entities can pass through these blocks
@@ -237,7 +240,7 @@ export function getBlockTextures(blockId) {
     case BLOCKS.BOOKSHELF:      return { top: 'planks_oak',  side: 'bookshelf',     bottom: 'planks_oak' };
     case BLOCKS.STONE_BRICK:    return { top: 'stone_brick', side: 'stone_brick',   bottom: 'stone_brick' };
     case BLOCKS.MOSSY_COBBLE:   return { top: 'mossy_cobble',side: 'mossy_cobble',  bottom: 'mossy_cobble' };
-    case BLOCKS.CACTUS:         return { top: 'grass_top',   side: 'cactus_side',   bottom: 'dirt' };
+    case BLOCKS.CACTUS:         return { top: 'cactus_top',  side: 'cactus_side',   bottom: 'cactus_top' };
     case BLOCKS.SOUL_SAND:      return { top: 'soul_sand',   side: 'soul_sand',     bottom: 'soul_sand' };
     case BLOCKS.WOOL_WHITE:     return { top: 'wool_white',  side: 'wool_white',    bottom: 'wool_white' };
     case BLOCKS.WOOL_RED:       return { top: 'wool_red',    side: 'wool_red',      bottom: 'wool_red' };
