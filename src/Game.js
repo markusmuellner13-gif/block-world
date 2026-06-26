@@ -189,7 +189,8 @@ export class Game {
   start() {
     this.running = true;
     const spawnY = this.world.generateSpawnArea();
-    this.player.spawnAt(0, spawnY, 0);
+    const sp = this.world.getSpawnOffset();
+    this.player.spawnAt(sp.x, spawnY, sp.z);
     this.menu.showStart();
     this._loop(0);
   }

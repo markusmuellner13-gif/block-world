@@ -74,8 +74,13 @@ export class World {
       }
     }
 
-    // Process build queue (generate chunk data)
-    const genPerFrame = 2;
+    // Process build queue (generate chunk data) — sort closest first
+    this._buildQueue.sort((a, b) => {
+      const da = (a.cx - pcx) ** 2 + (a.cz - pcz) ** 2;
+      const db = (b.cx - pcx) ** 2 + (b.cz - pcz) ** 2;
+      return da - db;
+    });
+    const genPerFrame = 4;
     for (let i = 0; i < genPerFrame && this._buildQueue.length > 0; i++) {
       const chunk = this._buildQueue.shift();
       chunk.data = this.generator.generateChunk(chunk.cx, chunk.cz);
@@ -88,8 +93,20 @@ export class World {
       this._rebuildChunkAt(chunk.cx, chunk.cz + 1);
     }
 
-    // Process mesh queue
-    const meshPerFrame = 1;
+    // Process mesh queue — deduplicate and prioritize closest
+    const seen = new Set();
+    this._meshQueue = this._meshQueue.filter(c => {
+      const k = this._key(c.cx, c.cz);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    this._meshQueue.sort((a, b) => {
+      const da = (a.cx - pcx) ** 2 + (a.cz - pcz) ** 2;
+      const db = (b.cx - pcx) ** 2 + (b.cz - pcz) ** 2;
+      return da - db;
+    });
+    const meshPerFrame = 4;
     for (let i = 0; i < meshPerFrame && this._meshQueue.length > 0; i++) {
       const chunk = this._meshQueue.shift();
       if (!chunk.generated) continue;
@@ -155,20 +172,42 @@ export class World {
   // Synchronously generate the 3×3 chunks around spawn so the player
   // always lands on a solid block and never falls through un-loaded terrain.
   generateSpawnArea() {
+    // Find a good spawn: not ocean, not deep water, not mountain peak
+    const spawnCX = this._findGoodSpawnChunk();
+    const spawnWX = spawnCX.cx * CHUNK_SIZE + 8;
+    const spawnWZ = spawnCX.cz * CHUNK_SIZE + 8;
+
     for (let dx = -1; dx <= 1; dx++) {
       for (let dz = -1; dz <= 1; dz++) {
-        const key = this._key(dx, dz);
+        const cx = spawnCX.cx + dx, cz = spawnCX.cz + dz;
+        const key = this._key(cx, cz);
         if (!this.chunks.has(key)) {
-          const chunk = new Chunk(dx, dz);
-          chunk.data = this.generator.generateChunk(dx, dz);
+          const chunk = new Chunk(cx, cz);
+          chunk.data = this.generator.generateChunk(cx, cz);
           chunk.generated = true;
           this.chunks.set(key, chunk);
-          // Queue mesh build for these chunks
           this._meshQueue.push(chunk);
         }
       }
     }
-    // Return the surface Y at the exact spawn column (0, 0)
-    return this.getSurfaceHeight(0, 0);
+    this._spawnOffset = { x: spawnWX, z: spawnWZ };
+    return this.getSurfaceHeight(spawnWX, spawnWZ);
   }
+
+  _findGoodSpawnChunk() {
+    // Spiral outward from 0,0 until we find a plains/forest chunk above sea level
+    for (let r = 0; r <= 12; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dz = -r; dz <= r; dz++) {
+          if (Math.abs(dx) !== r && Math.abs(dz) !== r) continue;
+          const wx = dx * CHUNK_SIZE + 8, wz = dz * CHUNK_SIZE + 8;
+          const h = this.generator.getApproximateHeight(wx, wz);
+          if (h >= SEA_LEVEL + 2 && h < 100) return { cx: dx, cz: dz };
+        }
+      }
+    }
+    return { cx: 0, cz: 0 };
+  }
+
+  getSpawnOffset() { return this._spawnOffset || { x: 0, z: 0 }; }
 }

@@ -19,13 +19,13 @@ export const BIOMES = {
 
 const BIOME_DEFS = {
   [BIOMES.PLAINS]: {
-    baseHeight: 66, heightVariation: 4,
+    baseHeight: 66, heightVariation: 5,
     surfaceBlock: BLOCKS.GRASS, subsurfaceBlock: BLOCKS.DIRT,
-    trees: { chance: 0.005, type: 'oak' },
+    trees: { chance: 0.012, type: 'oak' },
     flora: [
-      { block: BLOCKS.FLOWER_ROSE,   chance: 0.01 },
-      { block: BLOCKS.FLOWER_YELLOW, chance: 0.01 },
-      { block: BLOCKS.TALL_GRASS,    chance: 0.05 },
+      { block: BLOCKS.FLOWER_ROSE,   chance: 0.03 },
+      { block: BLOCKS.FLOWER_YELLOW, chance: 0.04 },
+      { block: BLOCKS.TALL_GRASS,    chance: 0.22 },
     ],
     oreMultiplier: 1.0,
     fogColor: 0x87ceeb, fogNear: 80, fogFar: 150,
@@ -33,13 +33,13 @@ const BIOME_DEFS = {
     villageChance: 0.003,
   },
   [BIOMES.FOREST]: {
-    baseHeight: 68, heightVariation: 6,
+    baseHeight: 68, heightVariation: 8,
     surfaceBlock: BLOCKS.GRASS, subsurfaceBlock: BLOCKS.DIRT,
-    trees: { chance: 0.04, type: 'oak' },
+    trees: { chance: 0.10, type: 'oak' },
     flora: [
-      { block: BLOCKS.FLOWER_ROSE,   chance: 0.005 },
-      { block: BLOCKS.MUSHROOM,      chance: 0.003 },
-      { block: BLOCKS.TALL_GRASS,    chance: 0.08 },
+      { block: BLOCKS.FLOWER_ROSE,   chance: 0.02 },
+      { block: BLOCKS.MUSHROOM,      chance: 0.008 },
+      { block: BLOCKS.TALL_GRASS,    chance: 0.18 },
     ],
     oreMultiplier: 1.0,
     fogColor: 0x6aab5a, fogNear: 40, fogFar: 80,
@@ -49,10 +49,10 @@ const BIOME_DEFS = {
   [BIOMES.BIRCH_FOREST]: {
     baseHeight: 68, heightVariation: 5,
     surfaceBlock: BLOCKS.GRASS, subsurfaceBlock: BLOCKS.DIRT,
-    trees: { chance: 0.035, type: 'birch' },
+    trees: { chance: 0.08, type: 'birch' },
     flora: [
-      { block: BLOCKS.FLOWER_YELLOW, chance: 0.01 },
-      { block: BLOCKS.TALL_GRASS,    chance: 0.06 },
+      { block: BLOCKS.FLOWER_YELLOW, chance: 0.04 },
+      { block: BLOCKS.TALL_GRASS,    chance: 0.15 },
     ],
     oreMultiplier: 1.0,
     fogColor: 0x8bc87a, fogNear: 50, fogFar: 100,
@@ -124,7 +124,7 @@ const BIOME_DEFS = {
     villageChance: 0.001,
   },
   [BIOMES.MOUNTAINS]: {
-    baseHeight: 90, heightVariation: 40,
+    baseHeight: 85, heightVariation: 50,
     surfaceBlock: BLOCKS.STONE, subsurfaceBlock: BLOCKS.STONE,
     snowLine: 120,
     trees: { chance: 0.01, type: 'pine' },

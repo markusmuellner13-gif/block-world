@@ -80,9 +80,10 @@ export class Menu {
           ${modeLabel} &nbsp;·&nbsp; ${mpLabel}
         </div>
         <div style="display:flex;flex-direction:column;gap:10px;">
-          <button class="menu-btn" id="resume-btn">▶  Resume</button>
-          <button class="menu-btn" id="settings-btn">⚙  World Settings</button>
-          <button class="menu-btn" id="controls-btn">⌨  Controls</button>
+          <button class="menu-btn" id="resume-btn">Resume Game</button>
+          <button class="menu-btn" id="settings-btn">Options...</button>
+          <button class="menu-btn" id="controls-btn">Controls</button>
+          <button class="menu-btn" id="quit-btn" style="margin-top:8px;border-color:#884444;color:#ffaaaa;">Save and Quit</button>
         </div>
       </div>
     `;
@@ -106,6 +107,10 @@ export class Menu {
     this._el.querySelector('#controls-btn').addEventListener('click', () => {
       this._showControls();
     });
+    this._el.querySelector('#quit-btn').addEventListener('click', () => {
+      // Return to home screen — reload page
+      window.location.reload();
+    });
 
     this.root.appendChild(this._el);
   }
@@ -124,8 +129,8 @@ export class Menu {
         <table style="width:100%;border-collapse:collapse;">
           <tr><td style="color:#aaa">WASD / Arrow Keys</td><td>Move</td></tr>
           <tr><td style="color:#aaa">Space</td><td>Jump</td></tr>
-          <tr><td style="color:#aaa">Shift</td><td>Sprint</td></tr>
-          <tr><td style="color:#aaa">Ctrl</td><td>Sneak</td></tr>
+          <tr><td style="color:#aaa">Ctrl / double-tap W</td><td>Sprint</td></tr>
+          <tr><td style="color:#aaa">Shift</td><td>Sneak</td></tr>
           <tr><td style="color:#aaa">Left Click (hold)</td><td>Break Block</td></tr>
           <tr><td style="color:#aaa">Right Click</td><td>Place Block</td></tr>
           <tr><td style="color:#aaa">Mouse Wheel / 1-9</td><td>Select Hotbar</td></tr>

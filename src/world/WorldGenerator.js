@@ -52,7 +52,21 @@ export class WorldGenerator {
     const base = biomeDef.baseHeight;
     const variation = biomeDef.heightVariation;
     const n = this._fbm2(this._n2, x * 0.006, z * 0.006, 6, 2, 0.55);
-    return Math.round(base + n * variation);
+    // River: carve narrow valleys in flat terrain using ridged noise
+    const riverNoise = Math.abs(this._fbm2(this._n2d, x * 0.003 + 50, z * 0.003 + 50, 3));
+    const riverFactor = Math.max(0, 1 - riverNoise * 8); // only carve where noise is near 0
+    const riverCarve = riverFactor * 6; // up to 6 blocks below normal
+    return Math.round(base + n * variation - riverCarve);
+  }
+
+  // Quick height estimate without full biome calculation (used for spawn search)
+  getApproximateHeight(wx, wz) {
+    const temp = this._temperature(wx, wz);
+    const hum  = this._humidity(wx, wz);
+    const cont = this._continentalness(wx, wz);
+    const biomeId  = this.biomeManager.getBiome(temp, hum, cont);
+    const biomeDef = this.biomeManager.getDef(biomeId);
+    return this._terrainHeight(wx, wz, biomeId, biomeDef);
   }
 
   _isCave(x, y, z) {
@@ -207,8 +221,12 @@ export class WorldGenerator {
     if (type === 'jungle'){ trunkH = 10 + Math.floor(Math.random() * 6); }
     if (type === 'swamp_oak') { trunkH = 4 + Math.floor(Math.random() * 2); }
 
-    // Trunk
-    for (let dy = 1; dy <= trunkH; dy++) set(lx, surfaceY + dy, lz, logBlock);
+    // Trunk — always place regardless of current block so it roots through grass/dirt
+    const forceSet = (x, y, z, block) => {
+      const i = safeIdx(x, y, z);
+      if (i >= 0) data[i] = block;
+    };
+    for (let dy = 1; dy <= trunkH; dy++) forceSet(lx, surfaceY + dy, lz, logBlock);
 
     // Leaves
     if (type === 'pine') {
@@ -216,6 +234,7 @@ export class WorldGenerator {
         const r = Math.max(1, Math.floor((trunkH - dy) * 0.5));
         for (let dx = -r; dx <= r; dx++) {
           for (let dz = -r; dz <= r; dz++) {
+            if (dx === 0 && dz === 0) continue; // leave trunk clear
             if (Math.abs(dx) + Math.abs(dz) <= r + 1) {
               set(lx + dx, surfaceY + dy, lz + dz, leafBlock);
             }
@@ -229,6 +248,7 @@ export class WorldGenerator {
         const r = dy <= trunkH - 1 ? 2 : 1;
         for (let dx = -r; dx <= r; dx++) {
           for (let dz = -r; dz <= r; dz++) {
+            if (dx === 0 && dz === 0 && dy < trunkH) continue; // leave trunk clear
             if (Math.abs(dx) + Math.abs(dz) <= r + 1) {
               set(lx + dx, surfaceY + dy, lz + dz, leafBlock);
             }

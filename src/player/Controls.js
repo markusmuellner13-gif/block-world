@@ -175,11 +175,11 @@ export class Controls {
   }
 
   get jumping()   { return this.isDown('Space') || !!this.touchButtons['jump']; }
-  // Sprint = double-tap W (held) – also cancel when sneaking
+  // Sprint = hold Ctrl while moving forward OR double-tap W
   get sprinting() {
-    return (this._sprintDetect.active && this.isDown('KeyW') && !this.sneaking)
-      || this._joystickSprint
-      || !!this.touchButtons['sprint'];
+    const ctrlSprint = (this.isDown('ControlLeft') || this.isDown('ControlRight')) && this.isDown('KeyW') && !this.sneaking;
+    const doubleTap  = this._sprintDetect.active && this.isDown('KeyW') && !this.sneaking;
+    return ctrlSprint || doubleTap || this._joystickSprint || !!this.touchButtons['sprint'];
   }
   // Sneak = Shift (left or right)
   get sneaking()  { return this.isDown('ShiftLeft') || this.isDown('ShiftRight') || !!this.touchButtons['sneak']; }
