@@ -7,7 +7,8 @@ export class Menu {
     this._startEl = null;
   }
 
-  showStart() {
+  showStart(onStarted) {
+    this._onStarted = onStarted;
     // World has been set up by HomeScreen. Show a minimal "click to play" prompt.
     this._startEl = document.createElement('div');
     this._startEl.style.cssText = `
@@ -50,6 +51,7 @@ export class Menu {
   _onStart() {
     if (this._startEl) { this._startEl.remove(); this._startEl = null; }
     this.game.controls.lock();
+    if (this._onStarted) this._onStarted();
   }
 
   setVisible(show) {

@@ -100,13 +100,25 @@ export class Game {
       this.camera.updateProjectionMatrix();
       this.renderer.setSize(window.innerWidth, window.innerHeight, false);
     });
+
+    // Pause via pointer-lock exit (browsers eat the ESC keydown in pointer-lock)
+    document.addEventListener('pointerlockchange', () => {
+      const locked = document.pointerLockElement === this.canvas;
+      if (!locked && !this.paused && !this.inventoryOpen && this._gameStarted) {
+        this.togglePause();
+      }
+    });
+
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Escape') {
         if (this.inventoryOpen) {
           this.hud.closeInventory();
-        } else {
+        } else if (this.paused) {
+          // Re-lock when unpausing via ESC
           this.togglePause();
         }
+        // Note: if not paused and in pointer-lock, ESC exits lock →
+        // pointerlockchange above handles showing the pause menu
       }
     });
   }
@@ -188,10 +200,11 @@ export class Game {
 
   start() {
     this.running = true;
+    this._gameStarted = false;
     const spawnY = this.world.generateSpawnArea();
     const sp = this.world.getSpawnOffset();
     this.player.spawnAt(sp.x, spawnY, sp.z);
-    this.menu.showStart();
+    this.menu.showStart(() => { this._gameStarted = true; });
     this._loop(0);
   }
 

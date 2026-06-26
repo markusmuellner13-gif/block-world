@@ -12,6 +12,7 @@ export class World {
     this.generator = new WorldGenerator(seed ?? Math.floor(Math.random() * 99999));
     this._buildQueue = [];
     this._meshQueue = [];
+    this._meshQueueSet = new Set(); // fast O(1) membership check
     this._villageQueue = [];
   }
 
@@ -53,7 +54,10 @@ export class World {
 
   _rebuildChunk(chunk) {
     chunk.dirty = true;
-    if (!this._meshQueue.includes(chunk)) this._meshQueue.push(chunk);
+    if (!this._meshQueueSet.has(chunk)) {
+      this._meshQueue.push(chunk);
+      this._meshQueueSet.add(chunk);
+    }
   }
 
   update(playerPos) {
@@ -74,44 +78,33 @@ export class World {
       }
     }
 
-    // Process build queue (generate chunk data) — sort closest first
-    this._buildQueue.sort((a, b) => {
-      const da = (a.cx - pcx) ** 2 + (a.cz - pcz) ** 2;
-      const db = (b.cx - pcx) ** 2 + (b.cz - pcz) ** 2;
-      return da - db;
-    });
-    const genPerFrame = 4;
+    // Process build queue (generate chunk data)
+    const genPerFrame = 2;
     for (let i = 0; i < genPerFrame && this._buildQueue.length > 0; i++) {
       const chunk = this._buildQueue.shift();
       chunk.data = this.generator.generateChunk(chunk.cx, chunk.cz);
       chunk.generated = true;
-      this._meshQueue.push(chunk);
-      // Trigger neighboring chunks to rebuild so their boundary faces cull correctly
+      if (!this._meshQueueSet.has(chunk)) {
+        this._meshQueue.push(chunk);
+        this._meshQueueSet.add(chunk);
+      }
+      // Trigger neighboring chunks to rebuild so boundary faces cull correctly
       this._rebuildChunkAt(chunk.cx - 1, chunk.cz);
       this._rebuildChunkAt(chunk.cx + 1, chunk.cz);
       this._rebuildChunkAt(chunk.cx, chunk.cz - 1);
       this._rebuildChunkAt(chunk.cx, chunk.cz + 1);
     }
 
-    // Process mesh queue — deduplicate and prioritize closest
-    const seen = new Set();
-    this._meshQueue = this._meshQueue.filter(c => {
-      const k = this._key(c.cx, c.cz);
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-    this._meshQueue.sort((a, b) => {
-      const da = (a.cx - pcx) ** 2 + (a.cz - pcz) ** 2;
-      const db = (b.cx - pcx) ** 2 + (b.cz - pcz) ** 2;
-      return da - db;
-    });
-    const meshPerFrame = 4;
-    for (let i = 0; i < meshPerFrame && this._meshQueue.length > 0; i++) {
+    // Process mesh queue
+    const meshPerFrame = 2;
+    let built = 0;
+    while (built < meshPerFrame && this._meshQueue.length > 0) {
       const chunk = this._meshQueue.shift();
-      if (!chunk.generated) continue;
+      this._meshQueueSet.delete(chunk);
+      if (!chunk.generated || !chunk.dirty) continue;
       chunk.buildMesh(this.textures, this);
       chunk.addToScene(this.scene);
+      built++;
     }
 
     // Unload distant chunks
@@ -121,6 +114,7 @@ export class World {
       if (dist > RENDER_DISTANCE + 2) {
         chunk.removeFromScene(this.scene);
         chunk.dispose();
+        this._meshQueueSet.delete(chunk);
         this.chunks.delete(key);
       }
     }
