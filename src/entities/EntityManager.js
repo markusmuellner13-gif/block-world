@@ -42,7 +42,13 @@ export class EntityManager {
 
     const limit = (ENTITY_RENDER_DISTANCE + 2) * CHUNK_SIZE;
 
-    for (const animal of this.animals) {
+    for (let i = this.animals.length - 1; i >= 0; i--) {
+      const animal = this.animals[i];
+      if (animal.dead) {
+        this.scene.remove(animal.group);
+        this.animals.splice(i, 1);
+        continue;
+      }
       const d = animal.position.distanceTo(playerPos);
       animal.group.visible = d < limit;
       if (animal.group.visible) animal.update(dt, playerPos);
@@ -163,12 +169,23 @@ export class EntityManager {
   }
 
   // Allow Player.js to deal damage to the nearest zombie (sword hit)
-  hitNearestZombie(playerPos, damage, knockbackDir) {
+  hitNearestZombie(playerPos, damage, knockbackDir, player = null) {
     let best = null, bestDist = 2.5;
     for (const z of this.zombies) {
       const d = z.position.distanceTo(playerPos);
       if (d < bestDist) { best = z; bestDist = d; }
     }
-    if (best) best.takeDamage(damage, knockbackDir);
+    if (best) best.takeDamage(damage, knockbackDir, player);
+  }
+
+  // Allow Player.js to deal damage to the nearest animal (sword hit)
+  hitNearestAnimal(playerPos, damage, player = null) {
+    let best = null, bestDist = 2.5;
+    for (const a of this.animals) {
+      if (a.dead) continue;
+      const d = a.position.distanceTo(playerPos);
+      if (d < bestDist) { best = a; bestDist = d; }
+    }
+    if (best) best.takeDamage(damage, player, this.scene);
   }
 }

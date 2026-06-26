@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Physics } from './Physics.js';
 import { Inventory } from '../inventory/Inventory.js';
-import { BLOCKS, BLOCK_HARDNESS } from '../world/BlockRegistry.js';
+import { BLOCKS, BLOCK_HARDNESS, FOOD_VALUES, getBlockDrop } from '../world/BlockRegistry.js';
 import {
   PLAYER_HEIGHT, PLAYER_EYE_HEIGHT,
   REACH_DISTANCE, CAMERA_MODES, SEA_LEVEL,
@@ -187,6 +187,17 @@ export class Player {
           this._hungerTimer -= 1;
         }
       }
+
+      // Health regeneration when well-fed
+      if (this.food >= 18 && this.health < this.maxHealth) {
+        this._regenTimer = (this._regenTimer || 0) + dt;
+        if (this._regenTimer >= 4) {
+          this.health = Math.min(this.maxHealth, this.health + 1);
+          this._regenTimer = 0;
+        }
+      } else {
+        this._regenTimer = 0;
+      }
     } else {
       this.health = this.maxHealth;
       this.food   = this.maxFood;
@@ -298,7 +309,17 @@ export class Player {
           this.game?.audio?.blockBreak();
           this.game?.particles?.blockBurst(x, y, z, blockId);
           if (this.mode === 'survival') {
-            this.inventory.addItem({ id: blockId, name: this._blockName(blockId), count: 1 });
+            const drop = getBlockDrop(blockId);
+            if (drop) this.inventory.addItem(drop);
+            // Tool durability
+            const heldItem = this.inventory.getSelected();
+            if (heldItem && heldItem.durability !== undefined) {
+              heldItem.durability--;
+              if (heldItem.durability <= 0) {
+                this.inventory.slots[this.inventory.selectedSlot] = null;
+                this.game?.audio?.toolBreak?.();
+              }
+            }
           }
           this.breakingBlock = null;
           this.breakProgress = 0;
@@ -309,7 +330,34 @@ export class Player {
       this.breakingBlock = null;
       this.breakProgress = 0;
       this._breakOverlay.visible = false;
+
+      // ── Attack nearby mobs (LMB with no block target) ───────────────────
+      if (controls.breaking && !this._prevBreaking && this.game?.entities) {
+        const item = this.inventory.getSelected();
+        const dmg  = item?.type === 'sword' ? 6 : (item?.type ? 2 : 1);
+        const dir  = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+        this.game.entities.hitNearestZombie(this.position, dmg, dir, this);
+        this.game.entities.hitNearestAnimal(this.position, dmg, this);
+        this._attackCooldown = 0.5;
+      }
     }
+    this._prevBreaking = controls.breaking;
+
+    // ── Eat food ─────────────────────────────────────────────────────────
+    if (controls.placing && !hit && this.mode === 'survival') {
+      const heldItem = this.inventory.getSelected();
+      if (heldItem?.type === 'item' && FOOD_VALUES[heldItem.id] !== undefined && this.food < this.maxFood) {
+        this._eatTimer = (this._eatTimer || 0) + dt;
+        if (this._eatTimer >= 1.6) {
+          this.food = Math.min(this.maxFood, this.food + FOOD_VALUES[heldItem.id]);
+          this.inventory.consumeSelected();
+          this._eatTimer = 0;
+          this.game?.audio?.eat?.();
+        }
+        return; // don't attempt placing while eating
+      }
+    }
+    if (!controls.placing) this._eatTimer = 0;
 
     // ── Place block ──────────────────────────────────────────────────────
     if (controls.placing && hit && this.placeDelay <= 0) {

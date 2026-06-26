@@ -24,7 +24,7 @@ export class World {
     const cx = Math.floor(wx / CHUNK_SIZE);
     const cz = Math.floor(wz / CHUNK_SIZE);
     const chunk = this.getChunk(cx, cz);
-    if (!chunk || !chunk.generated) return BLOCKS.STONE;
+    if (!chunk || !chunk.generated) return BLOCKS.AIR;
     const lx = ((wx % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
     const lz = ((wz % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
     return chunk.getBlock(lx, y, lz);
@@ -81,6 +81,11 @@ export class World {
       chunk.data = this.generator.generateChunk(chunk.cx, chunk.cz);
       chunk.generated = true;
       this._meshQueue.push(chunk);
+      // Trigger neighboring chunks to rebuild so their boundary faces cull correctly
+      this._rebuildChunkAt(chunk.cx - 1, chunk.cz);
+      this._rebuildChunkAt(chunk.cx + 1, chunk.cz);
+      this._rebuildChunkAt(chunk.cx, chunk.cz - 1);
+      this._rebuildChunkAt(chunk.cx, chunk.cz + 1);
     }
 
     // Process mesh queue
@@ -89,8 +94,7 @@ export class World {
       const chunk = this._meshQueue.shift();
       if (!chunk.generated) continue;
       chunk.buildMesh(this.textures, this);
-      if (chunk.mesh && !chunk.mesh.parent) this.scene.add(chunk.mesh);
-      if (chunk.waterMesh && !chunk.waterMesh.parent) this.scene.add(chunk.waterMesh);
+      chunk.addToScene(this.scene);
     }
 
     // Unload distant chunks
@@ -98,8 +102,7 @@ export class World {
       const [cx, cz] = key.split(',').map(Number);
       const dist = Math.abs(cx - pcx) + Math.abs(cz - pcz);
       if (dist > RENDER_DISTANCE + 2) {
-        if (chunk.mesh) this.scene.remove(chunk.mesh);
-        if (chunk.waterMesh) this.scene.remove(chunk.waterMesh);
+        chunk.removeFromScene(this.scene);
         chunk.dispose();
         this.chunks.delete(key);
       }

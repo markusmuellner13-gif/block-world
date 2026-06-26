@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { ITEMS } from '../world/BlockRegistry.js';
 
 const SPEED        = 2.2;
 const DETECT_RANGE = 22;
@@ -141,7 +142,9 @@ export class Zombie {
   }
 
   // knockbackDir: optional {x, z} unit vector pointing away from attacker
-  takeDamage(amount, knockbackDir = null) {
+  // player: optional Player reference to receive drops
+  takeDamage(amount, knockbackDir = null, player = null) {
+    if (this.dead) return;
     this.health -= amount;
     if (knockbackDir) {
       this.velocity.x += knockbackDir.x * 6;
@@ -149,7 +152,20 @@ export class Zombie {
       this.velocity.y  = 4;
       this.onGround    = false;
     }
-    if (this.health <= 0) this.dead = true;
+    if (this.health <= 0) {
+      this.dead = true;
+      if (player) {
+        // Drop 0-2 rotten flesh
+        const fleshCount = Math.floor(Math.random() * 3);
+        if (fleshCount > 0) {
+          player.inventory.addItem({ id: ITEMS.ROTTEN_FLESH, count: fleshCount, name: 'Rotten Flesh', type: 'item' });
+        }
+        // 5% chance to drop iron ingot
+        if (Math.random() < 0.05) {
+          player.inventory.addItem({ id: ITEMS.IRON_INGOT, count: 1, name: 'Iron Ingot', type: 'item' });
+        }
+      }
+    }
   }
 
   dispose(scene) {

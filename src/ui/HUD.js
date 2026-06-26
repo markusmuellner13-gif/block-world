@@ -1,4 +1,4 @@
-import { BLOCKS } from '../world/BlockRegistry.js';
+import { BLOCKS, ITEMS, ITEM_NAMES } from '../world/BlockRegistry.js';
 import { RECIPE_BOOK } from '../crafting/CraftingSystem.js';
 
 // ── Colour lookup for hotbar slot backgrounds ──────────────────────────────
@@ -21,8 +21,16 @@ function blockColor(id) {
     [BLOCKS.WOOL_PINK]: '#ee88aa', [BLOCKS.CRAFTING_TABLE]: '#a07038', [BLOCKS.FURNACE]: '#808080',
     [BLOCKS.BRICK]: '#9e4a2a', [BLOCKS.STONE_BRICK]: '#888', [BLOCKS.SANDSTONE]: '#d4b860',
     [BLOCKS.CACTUS]: '#2a7a1a', [BLOCKS.SOUL_SAND]: '#4a3020',
+    // Items
+    [ITEMS?.COAL]: '#222', [ITEMS?.IRON_INGOT]: '#d4d4d4', [ITEMS?.GOLD_INGOT]: '#f0d020',
+    [ITEMS?.DIAMOND]: '#40ddd8', [ITEMS?.EMERALD]: '#28c848', [ITEMS?.STICK]: '#9b6020',
+    [ITEMS?.SEEDS]: '#c8a820', [ITEMS?.APPLE]: '#cc2222', [ITEMS?.BREAD]: '#c87830',
+    [ITEMS?.RAW_BEEF]: '#c04040', [ITEMS?.COOKED_BEEF]: '#6b2a0a',
+    [ITEMS?.RAW_CHICKEN]: '#e0a080', [ITEMS?.COOKED_CHICKEN]: '#c07838',
+    [ITEMS?.ROTTEN_FLESH]: '#665544', [ITEMS?.BONE]: '#f0ead8',
+    [ITEMS?.FEATHER]: '#f0f0f0',
   };
-  return map[id] || '#999';
+  return map[id] || '#777';
 }
 
 const css = (el, s) => (el.style.cssText = s);
@@ -371,19 +379,32 @@ export class HUD {
                  position:relative;overflow:hidden;
                  ${sel ? 'box-shadow:0 0 10px rgba(255,255,255,0.45);' : ''}`);
       if (item) {
-        slot.style.background = item.id ? blockColor(item.id) : '#444';
+        const color = item.id ? blockColor(item.id) : (item.type === 'pickaxe' ? '#b0b0b0' : item.type === 'axe' ? '#c09060' : item.type === 'sword' ? '#b8b8d0' : item.type === 'shovel' ? '#d08040' : '#888');
+        slot.style.background = color;
         const cnt = document.createElement('div');
         css(cnt, `position:absolute;bottom:2px;right:4px;font-size:11px;
-                  color:#fff;text-shadow:1px 1px #000;`);
+                  color:#fff;text-shadow:1px 1px #000;font-weight:bold;`);
         cnt.textContent = item.count > 1 ? item.count : '';
         const name = document.createElement('div');
-        css(name, `font-size:9px;color:#fff;text-align:center;
-                   text-shadow:1px 1px #000;max-width:52px;overflow:hidden;`);
-        name.textContent = item.type !== 'block'
-          ? (item.type || '')
-          : (item.name?.split(' ')[0] || '');
+        css(name, `font-size:8px;color:#fff;text-align:center;
+                   text-shadow:1px 1px #000;max-width:52px;overflow:hidden;
+                   white-space:nowrap;padding:0 2px;line-height:1.1;`);
+        // Use ITEM_NAMES for items, or proper name for tools/blocks
+        const displayName = ITEM_NAMES?.[item.id] || item.name?.split(' ').slice(-1)[0] || item.type || '';
+        name.textContent = displayName.slice(0, 8);
         slot.appendChild(name);
         slot.appendChild(cnt);
+        // Tool durability bar
+        if (item.durability !== undefined && item.maxDurability) {
+          const durPct = item.durability / item.maxDurability;
+          const durBar = document.createElement('div');
+          css(durBar, `position:absolute;bottom:0;left:0;right:0;height:3px;background:#333;`);
+          const fill = document.createElement('div');
+          const durColor = durPct > 0.5 ? '#44ff44' : durPct > 0.25 ? '#ffaa00' : '#ff3333';
+          css(fill, `height:100%;width:${durPct*100}%;background:${durColor};`);
+          durBar.appendChild(fill);
+          slot.appendChild(durBar);
+        }
       }
       this._hotbarEl.appendChild(slot);
     });
@@ -452,6 +473,7 @@ export class HUD {
       `Target: ${blockName}`,
       `DayTime: ${(this.game.dayTime * 24).toFixed(1)}h`,
       `Zombies: ${this.game.entities.zombies.length}`,
+      `Rain: ${this.game.rain ? (this.game.rain.intensity * 100).toFixed(0) + '%' : 'off'}`,
     ].join('<br>');
   }
 
@@ -466,7 +488,7 @@ export class HUD {
       slots.forEach((item) => {
         const slot = document.createElement('div');
         css(slot, `width:44px;height:44px;border:2px solid #666;border-radius:3px;
-                   background:${item?.id ? blockColor(item.id) : '#222'};
+                   background:${item?.id ? blockColor(item.id) : (item?.type ? '#555' : '#222')};
                    display:flex;align-items:center;justify-content:center;
                    font-size:10px;color:#fff;cursor:pointer;position:relative;overflow:hidden;`);
         if (item) {
@@ -478,7 +500,7 @@ export class HUD {
           css(name, `position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
                      font-size:8px;color:#fff;text-shadow:1px 1px #000;text-align:center;
                      white-space:nowrap;overflow:hidden;max-width:42px;`);
-          name.textContent = item.name?.slice(0, 7) || '';
+          name.textContent = (ITEM_NAMES?.[item.id] || item.name || item.type || '').slice(0, 8);
           slot.appendChild(cnt);
           slot.appendChild(name);
         }

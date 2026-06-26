@@ -9,6 +9,7 @@ import { WorldSettings } from './ui/WorldSettings.js';
 import { Sky } from './rendering/Sky.js';
 import { TextureManager } from './rendering/TextureManager.js';
 import { ParticleSystem } from './rendering/ParticleSystem.js';
+import { RainSystem } from './rendering/RainSystem.js';
 import { AudioManager } from './audio/AudioManager.js';
 import { EntityManager } from './entities/EntityManager.js';
 import { RemotePlayer } from './multiplayer/RemotePlayer.js';
@@ -49,6 +50,7 @@ export class Game {
     this.player    = new Player(this.scene, this.world, this.camera, this);
     this.controls  = new Controls(this.canvas, this.player, this);
     this.sky       = new Sky(this.scene);
+    this.rain      = new RainSystem(this.scene);
     this.hud       = new HUD(uiRoot, this.player, this);
     this.menu      = new Menu(uiRoot, this);
     this.worldSettings = new WorldSettings(uiRoot, this);
@@ -205,8 +207,10 @@ export class Game {
     this.dayTime = (this.dayTime + dt / DAY_LENGTH) % 1;
     this._updateLighting();
     this.world.update(this.player.position);
-    this.sky.update(this.dayTime);
+    this.sky.update(this.dayTime, this.player.position);
+    this.rain.update(dt, this.player.position, this.world);
     this.particles.update(dt);
+    this._updateRainFog();
 
     if (this.controls.locked) {
       // Full update: player can move, entities tick
@@ -237,6 +241,14 @@ export class Game {
       this.camera.fov = this._currentFOV;
       this.camera.updateProjectionMatrix();
     }
+  }
+
+  _updateRainFog() {
+    const rainBoost = this.rain.intensity * 0.5;
+    const baseFar   = 120 - rainBoost * 60;
+    const baseNear  = 60  - rainBoost * 30;
+    this.scene.fog.near = baseNear;
+    this.scene.fog.far  = baseFar;
   }
 
   _updateLighting() {

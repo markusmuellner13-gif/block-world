@@ -18,11 +18,42 @@ export class Inventory {
     this.slots[1] = makeItem('axe',     'diamond');
     this.slots[2] = makeItem('shovel',  'diamond');
     this.slots[3] = makeItem('sword',   'diamond');
-    this.slots[4] = { id: BLOCKS.PLANKS_OAK, name: 'Oak Planks', count: 64, type: 'block' };
-    this.slots[5] = { id: BLOCKS.STONE,      name: 'Stone',       count: 64, type: 'block' };
-    this.slots[6] = { id: BLOCKS.GLOWSTONE,  name: 'Glowstone',   count: 64, type: 'block' };
-    this.slots[7] = { id: BLOCKS.WOOD_LOG,   name: 'Oak Log',     count: 64, type: 'block' };
-    this.slots[8] = { id: BLOCKS.GRASS,      name: 'Grass Block', count: 64, type: 'block' };
+    const buildBlocks = [
+      [BLOCKS.GRASS,          'Grass Block'],
+      [BLOCKS.DIRT,           'Dirt'],
+      [BLOCKS.STONE,          'Stone'],
+      [BLOCKS.COBBLESTONE,    'Cobblestone'],
+      [BLOCKS.SAND,           'Sand'],
+      [BLOCKS.GRAVEL,         'Gravel'],
+      [BLOCKS.WOOD_LOG,       'Oak Log'],
+      [BLOCKS.BIRCH_LOG,      'Birch Log'],
+      [BLOCKS.PINE_LOG,       'Pine Log'],
+      [BLOCKS.PLANKS_OAK,     'Oak Planks'],
+      [BLOCKS.PLANKS_BIRCH,   'Birch Planks'],
+      [BLOCKS.PLANKS_PINE,    'Pine Planks'],
+      [BLOCKS.LEAVES,         'Oak Leaves'],
+      [BLOCKS.GLASS,          'Glass'],
+      [BLOCKS.BRICK,          'Brick'],
+      [BLOCKS.SANDSTONE,      'Sandstone'],
+      [BLOCKS.OBSIDIAN,       'Obsidian'],
+      [BLOCKS.STONE_BRICK,    'Stone Brick'],
+      [BLOCKS.WOOL_WHITE,     'White Wool'],
+      [BLOCKS.WOOL_RED,       'Red Wool'],
+      [BLOCKS.WOOL_BLUE,      'Blue Wool'],
+      [BLOCKS.WOOL_GREEN,     'Green Wool'],
+      [BLOCKS.WOOL_YELLOW,    'Yellow Wool'],
+      [BLOCKS.WOOL_ORANGE,    'Orange Wool'],
+      [BLOCKS.GLOWSTONE,      'Glowstone'],
+      [BLOCKS.NETHERRACK,     'Netherrack'],
+      [BLOCKS.SNOW,           'Snow'],
+      [BLOCKS.ICE,            'Ice'],
+      [BLOCKS.CRAFTING_TABLE, 'Crafting Table'],
+      [BLOCKS.FURNACE,        'Furnace'],
+      [BLOCKS.BOOKSHELF,      'Bookshelf'],
+    ];
+    for (let i = 4, bi = 0; bi < buildBlocks.length && i < 36; i++, bi++) {
+      this.slots[i] = { id: buildBlocks[bi][0], name: buildBlocks[bi][1], count: 64, type: 'block' };
+    }
   }
 
   getSelected() {

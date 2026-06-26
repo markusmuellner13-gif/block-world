@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { BLOCKS } from '../world/BlockRegistry.js';
+import { BLOCKS, ITEMS } from '../world/BlockRegistry.js';
 
 const WANDER_RADIUS = 12;
 const WANDER_SPEED  = 1.5;
@@ -75,6 +75,9 @@ export class Animal {
     this.onGround = false;
 
     this.cfg = ANIMAL_CONFIGS[type] || ANIMAL_CONFIGS.pig;
+
+    this.health = 10;
+    this.dead   = false;
 
     this._wanderTarget = position.clone();
     this._wanderTimer  = Math.random() * 4;
@@ -257,5 +260,51 @@ export class Animal {
       this.position.y,
       this.position.z + Math.sin(angle) * dist
     );
+  }
+
+  _getDrops() {
+    const rand = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
+    switch (this.type) {
+      case 'cow':
+      case 'deer':
+      case 'horse':
+        return [{ id: ITEMS.RAW_BEEF, count: rand(1, 3), name: 'Raw Beef', type: 'item' }];
+      case 'pig':
+        return [{ id: ITEMS.RAW_BEEF, count: rand(1, 3), name: 'Raw Beef', type: 'item' }];
+      case 'sheep':
+        return [{ id: ITEMS.RAW_BEEF, count: rand(1, 2), name: 'Raw Beef', type: 'item' }];
+      case 'chicken':
+        return [
+          { id: ITEMS.RAW_CHICKEN, count: rand(1, 2), name: 'Raw Chicken', type: 'item' },
+          { id: ITEMS.FEATHER,     count: 1,           name: 'Feather',    type: 'item' },
+        ];
+      case 'rabbit':
+        return [{ id: ITEMS.RAW_CHICKEN, count: 1, name: 'Raw Chicken', type: 'item' }];
+      case 'wolf':
+      case 'fox':
+        return [{ id: ITEMS.BONE, count: rand(0, 1), name: 'Bone', type: 'item' }];
+      default:
+        return [];
+    }
+  }
+
+  takeDamage(amount, player = null, scene = null) {
+    if (this.dead) return;
+    this.health -= amount;
+    if (this.health <= 0) {
+      this.dead = true;
+      // Give drops to player inventory
+      if (player) {
+        for (const drop of this._getDrops()) {
+          player.inventory.addItem(drop);
+        }
+      }
+      // Remove from scene
+      if (scene) scene.remove(this.group);
+    }
+  }
+
+  dispose(scene) {
+    scene.remove(this.group);
   }
 }

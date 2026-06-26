@@ -65,6 +65,70 @@ export const BLOCKS = {
 // For easy iteration
 export const BLOCK_COUNT = Object.keys(BLOCKS).length;
 
+// Non-block item IDs (start at 200 to avoid conflicts with block IDs)
+export const ITEMS = {
+  COAL: 200, IRON_INGOT: 201, GOLD_INGOT: 202, DIAMOND: 203, EMERALD: 204,
+  STICK: 205, SEEDS: 206, APPLE: 207, BREAD: 208,
+  RAW_BEEF: 209, COOKED_BEEF: 210, RAW_CHICKEN: 211, COOKED_CHICKEN: 212,
+  ROTTEN_FLESH: 213, BONE: 214, FEATHER: 215,
+};
+
+export const FOOD_VALUES = {
+  [ITEMS.APPLE]: 4,
+  [ITEMS.BREAD]: 5,
+  [ITEMS.COOKED_BEEF]: 8,
+  [ITEMS.RAW_BEEF]: 3,
+  [ITEMS.COOKED_CHICKEN]: 6,
+  [ITEMS.RAW_CHICKEN]: 2,
+  [ITEMS.ROTTEN_FLESH]: 4,
+};
+
+export const ITEM_NAMES = {
+  [ITEMS.COAL]: 'Coal',
+  [ITEMS.IRON_INGOT]: 'Iron Ingot',
+  [ITEMS.GOLD_INGOT]: 'Gold Ingot',
+  [ITEMS.DIAMOND]: 'Diamond',
+  [ITEMS.EMERALD]: 'Emerald',
+  [ITEMS.STICK]: 'Stick',
+  [ITEMS.SEEDS]: 'Seeds',
+  [ITEMS.APPLE]: 'Apple',
+  [ITEMS.BREAD]: 'Bread',
+  [ITEMS.RAW_BEEF]: 'Raw Beef',
+  [ITEMS.COOKED_BEEF]: 'Cooked Beef',
+  [ITEMS.RAW_CHICKEN]: 'Raw Chicken',
+  [ITEMS.COOKED_CHICKEN]: 'Cooked Chicken',
+  [ITEMS.ROTTEN_FLESH]: 'Rotten Flesh',
+  [ITEMS.BONE]: 'Bone',
+  [ITEMS.FEATHER]: 'Feather',
+};
+
+export function getBlockDrop(blockId) {
+  switch (blockId) {
+    case BLOCKS.STONE:        return { id: BLOCKS.COBBLESTONE, count: 1, name: 'Cobblestone', type: 'block' };
+    case BLOCKS.GRASS:        return { id: BLOCKS.DIRT, count: 1, name: 'Dirt', type: 'block' };
+    case BLOCKS.COAL_ORE:     return { id: ITEMS.COAL, count: 1, name: 'Coal', type: 'item' };
+    case BLOCKS.DIAMOND_ORE:  return { id: ITEMS.DIAMOND, count: 1, name: 'Diamond', type: 'item' };
+    case BLOCKS.EMERALD_ORE:  return { id: ITEMS.EMERALD, count: 1, name: 'Emerald', type: 'item' };
+    case BLOCKS.IRON_ORE:     return { id: BLOCKS.IRON_ORE, count: 1, name: 'Iron Ore', type: 'block' };
+    case BLOCKS.GOLD_ORE:     return { id: BLOCKS.GOLD_ORE, count: 1, name: 'Gold Ore', type: 'block' };
+    case BLOCKS.LEAVES:       return Math.random() < 0.05 ? { id: ITEMS.APPLE, count: 1, name: 'Apple', type: 'item' } : null;
+    case BLOCKS.LEAVES_BIRCH: return null;
+    case BLOCKS.LEAVES_PINE:  return null;
+    case BLOCKS.GLOWSTONE:    return { id: BLOCKS.GLOWSTONE, count: 2 + Math.floor(Math.random() * 3), name: 'Glowstone', type: 'block' };
+    case BLOCKS.WHEAT:        return { id: ITEMS.BREAD, count: 1, name: 'Bread', type: 'item' };
+    case BLOCKS.TALL_GRASS:   return Math.random() < 0.15 ? { id: ITEMS.SEEDS, count: 1, name: 'Seeds', type: 'item' } : null;
+    case BLOCKS.FLOWER_ROSE:
+    case BLOCKS.FLOWER_YELLOW:
+    case BLOCKS.MUSHROOM:
+      return { id: blockId, count: 1, name: 'Block', type: 'block' };
+    default:
+      return {
+        id: blockId, count: 1, type: 'block',
+        name: Object.entries(BLOCKS).find(([, v]) => v === blockId)?.[0]?.toLowerCase().replace(/_/g, ' ') || 'Block',
+      };
+  }
+}
+
 // Which tool type breaks this fastest
 export const TOOL_AFFINITY = {
   pickaxe: new Set([
