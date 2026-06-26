@@ -1,0 +1,16 @@
+{
+  "name": "Block World",
+  "short_name": "Block World",
+  "description": "Minecraft-style voxel game — build, survive, explore",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#000000",
+  "theme_color": "#5c8a2e",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["games"],
+  "prefer_related_applications": false
+}
